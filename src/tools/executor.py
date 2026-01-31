@@ -8,6 +8,7 @@ Design decisions:
 - Timeout enforcement
 - Error isolation
 - Execution tracing for observability
+- Implements ToolExecutorProtocol from core to avoid circular dependencies
 """
 
 import asyncio
@@ -16,6 +17,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from src.core.types import ExecutionContext, ToolResult
+from src.core.interfaces import ToolExecutorProtocol
 from src.core.exceptions import (
     ToolExecutionError,
     ToolNotFoundError,
@@ -25,7 +27,6 @@ from src.core.exceptions import (
 from src.tools.registry import ToolRegistry, ToolDefinition
 from src.tools.permissions import PermissionManager
 from src.tools.tracing import ToolTracer
-from src.reasoning.strategies.base import ToolExecutor as ToolExecutorInterface
 
 
 class ToolValidator:
@@ -90,8 +91,12 @@ class ToolValidator:
         return isinstance(value, expected_types)
 
 
-class BaseToolExecutor(ABC, ToolExecutorInterface):
-    """Abstract base for tool executors."""
+class BaseToolExecutor(ABC):
+    """
+    Abstract base for tool executors.
+    
+    Implements ToolExecutorProtocol from core.interfaces.
+    """
     
     @abstractmethod
     async def execute(

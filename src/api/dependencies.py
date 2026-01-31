@@ -2,6 +2,9 @@
 FastAPI Dependencies
 
 Dependency injection for API routes.
+
+All cross-cutting concerns are provided through these dependencies,
+ensuring components are properly wired without direct coupling.
 """
 
 from typing import Any
@@ -11,6 +14,7 @@ from fastapi import Depends, HTTPException, Request, Header
 
 from src.memory import SessionManager, Session
 from src.tools import ToolRegistry
+from src.runtime import AgentRuntime
 
 
 async def get_components(request: Request) -> dict[str, Any]:
@@ -34,6 +38,20 @@ async def get_tool_registry(
     if "tool_registry" not in components:
         raise HTTPException(status_code=503, detail="Tool registry not available")
     return components["tool_registry"]
+
+
+async def get_agent_runtime(
+    components: dict[str, Any] = Depends(get_components),
+) -> AgentRuntime:
+    """
+    Get the AgentRuntime - the single orchestration point for agent execution.
+    
+    This is the canonical way to get an agent instance. All agent execution
+    must go through the runtime.
+    """
+    if "agent_runtime" not in components:
+        raise HTTPException(status_code=503, detail="Agent runtime not available")
+    return components["agent_runtime"]
 
 
 async def get_session(
@@ -83,19 +101,4 @@ async def get_trace_context(request: Request) -> dict[str, str]:
         "trace_id": getattr(request.state, "trace_id", None),
         "request_id": getattr(request.state, "request_id", None),
     }
-
-
-def get_agent():
-    """
-    Get an agent instance.
-    
-    This is a factory that creates agent instances
-    with the appropriate configuration.
-    """
-    # Placeholder for agent creation
-    # In a full implementation, this would:
-    # 1. Create/get LLM adapter
-    # 2. Create reasoning strategy
-    # 3. Configure tools
-    # 4. Return configured agent
     pass

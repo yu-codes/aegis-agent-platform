@@ -1,8 +1,11 @@
 """
 Core Module
 
-Contains fundamental types, exceptions, and utilities used across
+Contains fundamental types, exceptions, interfaces, and utilities used across
 all other modules in the Aegis platform.
+
+The interfaces module defines protocols for cross-module communication,
+preventing circular dependencies.
 """
 
 from src.core.types import (
@@ -23,9 +26,28 @@ from src.core.exceptions import (
     ExecutionError,
     LLMError,
     MemoryError,
+    MaxIterationsExceededError,
     PlanningError,
     SafetyError,
     ToolError,
+    ToolExecutionError,
+    ToolNotFoundError,
+    ToolPermissionError,
+    ToolValidationError,
+)
+from src.core.interfaces import (
+    LLMAdapterProtocol,
+    ToolExecutorProtocol,
+    MemoryProtocol,
+    RetrieverProtocol,
+    InputValidatorProtocol,
+    GuardrailProtocol,
+    TracerProtocol,
+    SpanProtocol,
+    SessionProtocol,
+    ValidationResult,
+    GuardrailResult,
+    RetrievedContext,
 )
 
 __all__ = [
@@ -46,7 +68,25 @@ __all__ = [
     "ExecutionError",
     "LLMError",
     "MemoryError",
+    "MaxIterationsExceededError",
     "PlanningError",
     "SafetyError",
     "ToolError",
+    "ToolExecutionError",
+    "ToolNotFoundError",
+    "ToolPermissionError",
+    "ToolValidationError",
+    # Interfaces/Protocols
+    "LLMAdapterProtocol",
+    "ToolExecutorProtocol",
+    "MemoryProtocol",
+    "RetrieverProtocol",
+    "InputValidatorProtocol",
+    "GuardrailProtocol",
+    "TracerProtocol",
+    "SpanProtocol",
+    "SessionProtocol",
+    "ValidationResult",
+    "GuardrailResult",
+    "RetrievedContext",
 ]

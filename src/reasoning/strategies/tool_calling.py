@@ -9,6 +9,7 @@ Design decisions:
 - Automatic tool result injection
 - Parallel tool execution when possible
 - Configurable tool choice modes
+- Uses ToolExecutorProtocol from core to avoid circular dependencies
 """
 
 from collections.abc import AsyncIterator
@@ -16,6 +17,7 @@ from typing import Any
 import asyncio
 
 from src.core.types import ExecutionContext, Message, MessageRole, ToolCall, ToolResult
+from src.core.interfaces import ToolExecutorProtocol
 from src.core.exceptions import MaxIterationsExceededError
 from src.reasoning.llm.base import BaseLLMAdapter
 from src.reasoning.strategies.base import (
@@ -23,7 +25,6 @@ from src.reasoning.strategies.base import (
     ReasoningResult,
     ReasoningEvent,
     ReasoningEventType,
-    ToolExecutor,
 )
 
 
@@ -45,7 +46,7 @@ class ToolCallingStrategy(ReasoningStrategy):
     def __init__(
         self,
         llm: BaseLLMAdapter,
-        tool_executor: ToolExecutor,
+        tool_executor: ToolExecutorProtocol,
         max_iterations: int = 10,
         parallel_tool_calls: bool = True,
     ):

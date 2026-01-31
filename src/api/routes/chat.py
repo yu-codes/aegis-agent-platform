@@ -2,6 +2,7 @@
 Chat API Routes
 
 Main chat endpoint with streaming support.
+Uses AgentRuntime as the single orchestration point.
 """
 
 from typing import Any
@@ -12,13 +13,13 @@ from pydantic import BaseModel, Field
 
 from src.api.dependencies import (
     get_session_manager,
-    get_tool_registry,
+    get_agent_runtime,
     get_current_user,
     get_trace_context,
 )
 from src.api.streaming import StreamingResponse, stream_sse
 from src.memory import SessionManager
-from src.tools import ToolRegistry
+from src.runtime import AgentRuntime, AgentEvent, AgentEventType
 
 router = APIRouter()
 
@@ -50,13 +51,17 @@ class ChatResponse(BaseModel):
     model: str | None = None
     usage: dict[str, int] | None = None
     tool_calls: list[dict[str, Any]] | None = None
+    
+    # Debug info (optional)
+    execution_id: str | None = None
+    trace_id: str | None = None
 
 
 @router.post("/chat")
 async def chat(
     request: ChatRequest,
     session_manager: SessionManager = Depends(get_session_manager),
-    tool_registry: ToolRegistry = Depends(get_tool_registry),
+    runtime: AgentRuntime = Depends(get_agent_runtime),
     user: dict | None = Depends(get_current_user),
     trace_ctx: dict = Depends(get_trace_context),
 ):
@@ -64,8 +69,9 @@ async def chat(
     Chat with the agent.
     
     Supports both streaming (SSE) and non-streaming responses.
+    All execution flows through AgentRuntime - the single orchestration point.
     """
-    from src.core.types import Message, ExecutionContext
+    from src.core.types import Message, MessageRole, ExecutionContext
     
     # Get or create session
     if request.session_id:
@@ -83,70 +89,91 @@ async def chat(
         user_id=user.get("id") if user else None,
         allowed_tools=set(request.tools) if request.tools else None,
         trace_id=trace_ctx.get("trace_id"),
+        enable_streaming=request.stream,
     )
     
-    # Add message to session
-    user_message = Message(role="user", content=request.message)
-    session.add_message(user_message)
+    # Get conversation history from session
+    history = list(session.messages) if session.messages else None
     
     if request.stream:
-        # Return streaming response
+        # Return streaming response via AgentRuntime
         return StreamingResponse(
-            _stream_response(session, context, request, tool_registry),
+            _stream_response(runtime, request.message, context, history, session, session_manager),
             media_type="text/event-stream",
         )
     else:
-        # Non-streaming response
-        response = await _generate_response(session, context, request, tool_registry)
+        # Non-streaming response via AgentRuntime
+        result = await runtime.run(
+            message=request.message,
+            context=context,
+            history=history,
+        )
+        
+        # Persist messages to session
+        session.add_message(Message(role=MessageRole.USER, content=request.message))
+        session.add_message(Message(role=MessageRole.ASSISTANT, content=result.content))
+        await session_manager.save(session)
+        
         return ChatResponse(
-            message=response["content"],
+            message=result.content,
             session_id=session.id,
-            model=response.get("model"),
-            usage=response.get("usage"),
-            tool_calls=response.get("tool_calls"),
+            model=result.model,
+            usage={
+                "total_tokens": result.total_tokens,
+                "tool_calls": result.tool_calls_count,
+            } if result.total_tokens else None,
+            tool_calls=[
+                {"name": tr.name, "result": tr.result}
+                for tr in result.tool_results
+            ] if result.tool_results else None,
+            execution_id=str(result.execution_id),
+            trace_id=result.trace_id,
         )
 
 
 async def _stream_response(
-    session,
+    runtime: AgentRuntime,
+    message: str,
     context,
-    request: ChatRequest,
-    tool_registry: ToolRegistry,
+    history,
+    session,
+    session_manager,
 ):
-    """Generate streaming response."""
-    # Placeholder implementation
-    # In a full implementation, this would:
-    # 1. Call the reasoning strategy with streaming
-    # 2. Yield token events as they arrive
-    # 3. Yield tool call events
-    # 4. Yield the final response
-    
+    """Generate streaming response via AgentRuntime."""
     import json
+    from src.core.types import Message, MessageRole
     
     yield f"event: start\ndata: {json.dumps({'session_id': str(session.id)})}\n\n"
     
-    # Simulate streaming
-    response_text = f"This is a placeholder response to: {request.message}"
+    final_content = ""
     
-    for word in response_text.split():
-        yield f"event: token\ndata: {json.dumps({'content': word + ' '})}\n\n"
-    
-    yield f"event: done\ndata: {json.dumps({'content': response_text})}\n\n"
-
-
-async def _generate_response(
-    session,
-    context,
-    request: ChatRequest,
-    tool_registry: ToolRegistry,
-) -> dict[str, Any]:
-    """Generate non-streaming response."""
-    # Placeholder implementation
-    return {
-        "content": f"This is a placeholder response to: {request.message}",
-        "model": request.model or "gpt-4",
-        "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-    }
+    async for event in runtime.run_stream(message, context, history):
+        if event.type == AgentEventType.CONTENT_CHUNK:
+            chunk = event.data.get("content", "")
+            final_content += chunk
+            yield f"event: token\ndata: {json.dumps({'content': chunk})}\n\n"
+        
+        elif event.type == AgentEventType.TOOL_CALL_STARTED:
+            yield f"event: tool_start\ndata: {json.dumps(event.data)}\n\n"
+        
+        elif event.type == AgentEventType.TOOL_CALL_COMPLETED:
+            yield f"event: tool_end\ndata: {json.dumps(event.data)}\n\n"
+        
+        elif event.type == AgentEventType.RUN_COMPLETED:
+            final_content = event.data.get("content", final_content)
+            
+            # Persist messages
+            session.add_message(Message(role=MessageRole.USER, content=message))
+            session.add_message(Message(role=MessageRole.ASSISTANT, content=final_content))
+            await session_manager.save(session)
+            
+            yield f"event: done\ndata: {json.dumps({'content': final_content, **event.data})}\n\n"
+        
+        elif event.type == AgentEventType.RUN_FAILED:
+            yield f"event: error\ndata: {json.dumps(event.data)}\n\n"
+        
+        elif event.type == AgentEventType.OUTPUT_BLOCKED:
+            yield f"event: blocked\ndata: {json.dumps(event.data)}\n\n"
 
 
 @router.post("/chat/{session_id}/regenerate")

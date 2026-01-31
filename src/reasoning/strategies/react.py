@@ -11,6 +11,7 @@ Design decisions:
 - Configurable max iterations to prevent loops
 - Explicit final answer detection
 - Full trace of reasoning steps for debugging
+- Uses ToolExecutorProtocol from core to avoid circular dependencies
 """
 
 import re
@@ -19,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.core.types import ExecutionContext, Message, MessageRole, ToolResult
+from src.core.interfaces import ToolExecutorProtocol
 from src.core.exceptions import MaxIterationsExceededError
 from src.reasoning.llm.base import BaseLLMAdapter
 from src.reasoning.prompts.template import get_prompt_registry
@@ -27,7 +29,6 @@ from src.reasoning.strategies.base import (
     ReasoningResult,
     ReasoningEvent,
     ReasoningEventType,
-    ToolExecutor,
 )
 
 
@@ -58,7 +59,7 @@ class ReActStrategy(ReasoningStrategy):
     def __init__(
         self,
         llm: BaseLLMAdapter,
-        tool_executor: ToolExecutor,
+        tool_executor: ToolExecutorProtocol,
         max_iterations: int = 10,
     ):
         self._llm = llm

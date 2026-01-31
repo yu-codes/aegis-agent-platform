@@ -10,6 +10,7 @@ Design decisions:
 - Async execution for non-blocking I/O
 - Context-aware: strategies receive full execution context
 - Observable: strategies emit events for tracing
+- Uses ToolExecutorProtocol from core to avoid circular dependencies
 """
 
 from abc import ABC, abstractmethod
@@ -19,6 +20,7 @@ from typing import Any
 from enum import Enum
 
 from src.core.types import ExecutionContext, LLMResponse, Message, ToolResult
+from src.core.interfaces import ToolExecutorProtocol
 
 
 class ReasoningEventType(str, Enum):
@@ -118,28 +120,6 @@ class ReasoningStrategy(ABC):
         pass
 
 
-class ToolExecutor(ABC):
-    """
-    Interface for executing tools.
-    
-    Strategies delegate tool execution to this interface,
-    allowing the tool system to handle permissions, tracing, etc.
-    """
-    
-    @abstractmethod
-    async def execute(
-        self,
-        tool_name: str,
-        arguments: dict[str, Any],
-        context: ExecutionContext,
-    ) -> ToolResult:
-        """Execute a tool and return the result."""
-        pass
-    
-    @abstractmethod
-    def get_tool_definitions(
-        self,
-        context: ExecutionContext,
-    ) -> list[dict[str, Any]]:
-        """Get tool definitions allowed for this context."""
-        pass
+# Re-export ToolExecutorProtocol for backwards compatibility
+# New code should import from src.core.interfaces
+ToolExecutor = ToolExecutorProtocol
