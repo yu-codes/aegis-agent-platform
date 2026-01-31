@@ -40,17 +40,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, Any]]:
     settings = get_settings()
 
     # Initialize components
-    state = {}
+    state: dict[str, Any] = {}
 
     # Initialize Redis if configured
     if settings.redis.enabled:
         try:
             import redis.asyncio as redis
 
+            redis_password = settings.redis.password.get_secret_value() if settings.redis.password else None
             redis_client = redis.Redis(
                 host=settings.redis.host,
                 port=settings.redis.port,
-                password=settings.redis.password,
+                password=redis_password,
                 db=settings.redis.db,
                 decode_responses=True,
             )
@@ -62,7 +63,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, Any]]:
     from src.memory import InMemorySessionBackend, RedisSessionBackend, SessionManager
 
     if "redis" in state:
-        session_backend = RedisSessionBackend(state["redis"])
+        redis_url = f"redis://{settings.redis.host}:{settings.redis.port}/{settings.redis.db}"
+        session_backend: RedisSessionBackend | InMemorySessionBackend = RedisSessionBackend(redis_url)
     else:
         session_backend = InMemorySessionBackend()
 
@@ -72,7 +74,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, Any]]:
     from src.tools import ToolExecutor, ToolRegistry
     from src.tools.builtin import register_builtin_tools
 
-    registry = ToolRegistry()
+    registry = ToolRegistry()  # type: ignore
     register_builtin_tools(registry)
     state["tool_registry"] = registry
 
@@ -164,7 +166,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, Any]]:
         await state["redis"].close()
 
 
-async def _create_llm_adapter(settings):
+async def _create_llm_adapter(settings: Any) -> Any:
     """
     Create the appropriate LLM adapter based on settings.
 
@@ -199,10 +201,7 @@ async def _create_llm_adapter(settings):
                 from src.reasoning.llm.openai_adapter import OpenAIAdapter
 
                 print("🔌 Using OpenAI LLM adapter")
-                return OpenAIAdapter(
-                    model=settings.llm.default_model,
-                    api_key=api_key,
-                )
+                return OpenAIAdapter(settings=settings.llm)
 
         elif provider == "anthropic":
             api_key = getattr(settings.llm, "anthropic_api_key", None)
@@ -210,10 +209,7 @@ async def _create_llm_adapter(settings):
                 from src.reasoning.llm.anthropic_adapter import AnthropicAdapter
 
                 print("🔌 Using Anthropic LLM adapter")
-                return AnthropicAdapter(
-                    model=settings.llm.default_model,
-                    api_key=api_key,
-                )
+                return AnthropicAdapter(settings=settings.llm)
 
         # Fallback to stub if no valid provider configured
         print("⚠️  No LLM API key configured - falling back to STUB adapter")

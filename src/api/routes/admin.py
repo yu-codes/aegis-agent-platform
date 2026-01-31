@@ -4,6 +4,8 @@ Admin Routes
 Administrative endpoints for monitoring and configuration.
 """
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -14,9 +16,9 @@ router = APIRouter()
 
 @router.get("/stats")
 async def get_stats(
-    components: dict = Depends(get_components),
-    user: dict = Depends(require_user),
-):
+    components: dict[str, Any] = Depends(get_components),
+    user: dict[str, Any] = Depends(require_user),
+) -> dict[str, Any]:
     """Get platform statistics."""
     # Check admin role
     if "admin" not in user.get("roles", []):
@@ -39,8 +41,8 @@ async def get_stats(
 
 @router.get("/metrics")
 async def get_metrics(
-    user: dict = Depends(require_user),
-):
+    user: dict[str, Any] = Depends(require_user),
+) -> Any:
     """Get Prometheus metrics."""
     if "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -67,8 +69,8 @@ class ConfigUpdate(BaseModel):
 @router.post("/config")
 async def update_config(
     update: ConfigUpdate,
-    user: dict = Depends(require_user),
-):
+    user: dict[str, Any] = Depends(require_user),
+) -> dict[str, str]:
     """Update configuration."""
     if "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -81,8 +83,8 @@ async def update_config(
 async def get_audit_logs(
     limit: int = 100,
     event_type: str | None = None,
-    user: dict = Depends(require_user),
-):
+    user: dict[str, Any] = Depends(require_user),
+) -> dict[str, Any]:
     """Get audit logs."""
     if "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -93,9 +95,9 @@ async def get_audit_logs(
 
 @router.post("/cache/clear")
 async def clear_cache(
-    components: dict = Depends(get_components),
-    user: dict = Depends(require_user),
-):
+    components: dict[str, Any] = Depends(get_components),
+    user: dict[str, Any] = Depends(require_user),
+) -> dict[str, str]:
     """Clear application caches."""
     if "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin access required")

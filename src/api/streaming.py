@@ -19,7 +19,7 @@ class EventStream:
     Formats events according to SSE spec.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
 
     async def send(

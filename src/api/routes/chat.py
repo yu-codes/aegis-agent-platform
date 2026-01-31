@@ -5,6 +5,7 @@ Main chat endpoint with streaming support.
 Uses DomainAwareRuntime for domain-specific agent behavior.
 """
 
+from collections.abc import AsyncIterator
 from typing import Any
 from uuid import UUID
 
@@ -18,6 +19,8 @@ from src.api.dependencies import (
     get_trace_context,
 )
 from src.api.streaming import StreamingResponse
+from starlette.responses import StreamingResponse as StarletteStreamingResponse
+from src.core.types import Message
 from src.domains import DomainAwareRuntime
 from src.memory import SessionManager
 from src.runtime import AgentEventType
@@ -73,9 +76,9 @@ async def chat(
     request: ChatRequest,
     session_manager: SessionManager = Depends(get_session_manager),
     runtime: DomainAwareRuntime = Depends(get_domain_aware_runtime),
-    user: dict | None = Depends(get_current_user),
-    trace_ctx: dict = Depends(get_trace_context),
-):
+    user: dict[str, Any] | None = Depends(get_current_user),
+    trace_ctx: dict[str, str | None] = Depends(get_trace_context),
+) -> StarletteStreamingResponse | ChatResponse:
     """
     Chat with the agent.
 
@@ -166,12 +169,12 @@ async def chat(
 async def _stream_response(
     runtime: DomainAwareRuntime,
     message: str,
-    context,
-    history,
-    session,
-    session_manager,
+    context: Any,
+    history: list[Message] | None,
+    session: Any,
+    session_manager: SessionManager,
     domain: str | None = None,
-):
+) -> AsyncIterator[str]:
     """Generate streaming response via DomainAwareRuntime."""
     import json
 
@@ -219,8 +222,8 @@ async def _stream_response(
 async def regenerate_response(
     session_id: UUID,
     session_manager: SessionManager = Depends(get_session_manager),
-    user: dict | None = Depends(get_current_user),
-):
+    user: dict[str, Any] | None = Depends(get_current_user),
+) -> dict[str, str]:
     """
     Regenerate the last response.
     """

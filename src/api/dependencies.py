@@ -29,7 +29,9 @@ async def get_session_manager(
     """Get session manager."""
     if "session_manager" not in components:
         raise HTTPException(status_code=503, detail="Session manager not available")
-    return components["session_manager"]
+    value = components["session_manager"]
+    assert isinstance(value, SessionManager)
+    return value
 
 
 async def get_tool_registry(
@@ -38,7 +40,9 @@ async def get_tool_registry(
     """Get tool registry."""
     if "tool_registry" not in components:
         raise HTTPException(status_code=503, detail="Tool registry not available")
-    return components["tool_registry"]
+    value = components["tool_registry"]
+    assert isinstance(value, ToolRegistry)
+    return value
 
 
 async def get_domain_registry(
@@ -47,7 +51,9 @@ async def get_domain_registry(
     """Get domain registry."""
     if "domain_registry" not in components:
         raise HTTPException(status_code=503, detail="Domain registry not available")
-    return components["domain_registry"]
+    value = components["domain_registry"]
+    assert isinstance(value, DomainRegistry)
+    return value
 
 
 async def get_agent_runtime(
@@ -60,7 +66,9 @@ async def get_agent_runtime(
     """
     if "agent_runtime" not in components:
         raise HTTPException(status_code=503, detail="Agent runtime not available")
-    return components["agent_runtime"]
+    value = components["agent_runtime"]
+    assert isinstance(value, AgentRuntime)
+    return value
 
 
 async def get_domain_aware_runtime(
@@ -81,7 +89,9 @@ async def get_domain_aware_runtime(
     """
     if "domain_aware_runtime" not in components:
         raise HTTPException(status_code=503, detail="Domain-aware runtime not available")
-    return components["domain_aware_runtime"]
+    value = components["domain_aware_runtime"]
+    assert isinstance(value, DomainAwareRuntime)
+    return value
 
 
 async def get_session(
@@ -89,7 +99,7 @@ async def get_session(
     session_manager: SessionManager = Depends(get_session_manager),
 ) -> Session:
     """Get a session by ID."""
-    session = await session_manager.get(session_id)
+    session = await session_manager.get_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return session
@@ -107,7 +117,10 @@ async def get_current_user(
     """
     # Check if already validated by middleware
     if hasattr(request.state, "user"):
-        return request.state.user
+        user = request.state.user
+        if isinstance(user, dict):
+            return user
+        return None
 
     # Return None for unauthenticated requests
     return None
@@ -125,10 +138,9 @@ async def require_user(
     return user
 
 
-async def get_trace_context(request: Request) -> dict[str, str]:
+async def get_trace_context(request: Request) -> dict[str, str | None]:
     """Get tracing context from request."""
     return {
         "trace_id": getattr(request.state, "trace_id", None),
         "request_id": getattr(request.state, "request_id", None),
     }
-    pass

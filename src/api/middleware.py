@@ -5,7 +5,8 @@ Custom middleware for cross-cutting concerns.
 """
 
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 from uuid import uuid4
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -21,7 +22,7 @@ class TracingMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self,
         request: Request,
-        call_next: Callable,
+        call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         # Generate or extract trace ID
         trace_id = request.headers.get("X-Trace-Id", str(uuid4()))
@@ -57,10 +58,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: Any,
         requests_per_minute: int = 60,
         key_func: Callable[[Request], str] | None = None,
-    ):
+    ) -> None:
         super().__init__(app)
         self._rpm = requests_per_minute
         self._key_func = key_func or self._default_key
@@ -76,7 +77,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self,
         request: Request,
-        call_next: Callable,
+        call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         key = self._key_func(request)
         now = time.time()
@@ -123,11 +124,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: Any,
         api_key_header: str = "X-API-Key",
         bearer_header: str = "Authorization",
         public_paths: list[str] | None = None,
-    ):
+    ) -> None:
         super().__init__(app)
         self._api_key_header = api_key_header
         self._bearer_header = bearer_header
@@ -136,7 +137,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self,
         request: Request,
-        call_next: Callable,
+        call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         # Skip auth for public paths
         if request.url.path in self._public_paths:
@@ -166,13 +167,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
             media_type="application/json",
         )
 
-    async def _validate_api_key(self, api_key: str) -> dict | None:
+    async def _validate_api_key(self, api_key: str) -> dict[str, Any] | None:
         """Validate API key and return user info."""
         # Implement API key validation
         # This is a placeholder
         return None
 
-    async def _validate_token(self, token: str) -> dict | None:
+    async def _validate_token(self, token: str) -> dict[str, Any] | None:
         """Validate JWT token and return user info."""
         # Implement JWT validation
         # This is a placeholder
@@ -187,7 +188,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self,
         request: Request,
-        call_next: Callable,
+        call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         try:
             return await call_next(request)
@@ -201,9 +202,10 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             from src.core.exceptions import AegisError
 
             if isinstance(e, AegisError):
+                status_code = getattr(e, "status_code", 500)
                 return Response(
                     content=f'{{"error": "{e.message}", "code": "{e.code}"}}',
-                    status_code=e.status_code,
+                    status_code=status_code,
                     media_type="application/json",
                 )
 

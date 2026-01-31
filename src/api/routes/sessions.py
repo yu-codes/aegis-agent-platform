@@ -42,8 +42,8 @@ class SessionListResponse(BaseModel):
 async def create_session(
     request: CreateSessionRequest | None = None,
     session_manager: SessionManager = Depends(get_session_manager),
-    user: dict | None = Depends(get_current_user),
-):
+    user: dict[str, Any] | None = Depends(get_current_user),
+) -> SessionResponse:
     """Create a new chat session."""
     session = await session_manager.create_session(
         user_id=user.get("id") if user else None,
@@ -64,8 +64,8 @@ async def list_sessions(
     limit: int = 20,
     offset: int = 0,
     session_manager: SessionManager = Depends(get_session_manager),
-    user: dict | None = Depends(get_current_user),
-):
+    user: dict[str, Any] | None = Depends(get_current_user),
+) -> SessionListResponse:
     """List user's sessions."""
     user_id = user.get("id") if user else None
 
@@ -104,8 +104,8 @@ async def list_sessions(
 async def get_session(
     session_id: UUID,
     session_manager: SessionManager = Depends(get_session_manager),
-    user: dict | None = Depends(get_current_user),
-):
+    user: dict[str, Any] | None = Depends(get_current_user),
+) -> SessionResponse:
     """Get session details."""
     session = await session_manager.get_session(session_id)
 
@@ -130,8 +130,8 @@ async def get_session_messages(
     session_id: UUID,
     limit: int = 50,
     session_manager: SessionManager = Depends(get_session_manager),
-    user: dict | None = Depends(get_current_user),
-):
+    user: dict[str, Any] | None = Depends(get_current_user),
+) -> dict[str, Any]:
     """Get messages from a session."""
     session = await session_manager.get_session(session_id)
 
@@ -146,7 +146,7 @@ async def get_session_messages(
                 "id": str(m.id),
                 "role": m.role,
                 "content": m.content,
-                "timestamp": m.timestamp.isoformat() if m.timestamp else None,
+                "timestamp": m.created_at.isoformat() if m.created_at else None,
             }
             for m in messages
         ],
@@ -158,8 +158,8 @@ async def get_session_messages(
 async def delete_session(
     session_id: UUID,
     session_manager: SessionManager = Depends(get_session_manager),
-    user: dict | None = Depends(get_current_user),
-):
+    user: dict[str, Any] | None = Depends(get_current_user),
+) -> dict[str, str]:
     """Delete a session."""
     session = await session_manager.get_session(session_id)
 

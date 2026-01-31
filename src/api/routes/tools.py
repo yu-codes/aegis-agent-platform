@@ -35,8 +35,8 @@ class ToolListResponse(BaseModel):
 async def list_tools(
     category: str | None = None,
     tool_registry: ToolRegistry = Depends(get_tool_registry),
-    user: dict | None = Depends(get_current_user),
-):
+    user: dict[str, Any] | None = Depends(get_current_user),
+) -> ToolListResponse:
     """List available tools."""
     # Get tools, optionally filtered by category
     if category:
@@ -68,7 +68,7 @@ async def list_tools(
 async def get_tool(
     tool_name: str,
     tool_registry: ToolRegistry = Depends(get_tool_registry),
-):
+) -> ToolInfo:
     """Get tool details."""
     tool = tool_registry.get(tool_name)
 
@@ -96,14 +96,16 @@ async def execute_tool(
     tool_name: str,
     request: ExecuteToolRequest,
     tool_registry: ToolRegistry = Depends(get_tool_registry),
-    user: dict | None = Depends(get_current_user),
-):
+    user: dict[str, Any] | None = Depends(get_current_user),
+) -> dict[str, Any]:
     """
     Execute a tool directly.
 
     Note: This is for testing/admin purposes.
     Normal tool execution happens through chat.
     """
+    from uuid import uuid4
+
     from src.core.types import ExecutionContext
     from src.tools.executor import ToolExecutor
 
@@ -113,6 +115,7 @@ async def execute_tool(
 
     # Create context
     context = ExecutionContext(
+        session_id=uuid4(),
         user_id=user.get("id") if user else None,
     )
 
@@ -135,7 +138,7 @@ async def execute_tool(
 
 
 @router.get("/tools/categories")
-async def list_categories():
+async def list_categories() -> dict[str, list[str]]:
     """List available tool categories."""
     return {
         "categories": [cat.value for cat in ToolCategory],
