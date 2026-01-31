@@ -7,11 +7,12 @@ Design decisions:
 - Factory pattern for testability
 - Middleware composition
 - Lifespan management for component lifecycle
-- AgentRuntime as the single orchestration point
+- DomainAwareRuntime as the domain-aware orchestration point
 - CORS configuration
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, AsyncIterator
 
 from fastapi import FastAPI
@@ -29,7 +30,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, Any]]:
     - Redis connection (if configured)
     - Session manager
     - Tool registry and executor
-    - AgentRuntime (the orchestration point)
+    - Domain registry (loads domain profiles)
+    - DomainAwareRuntime (the domain-aware orchestration point)
     
     All components are stored in app.state.components for DI.
     """
@@ -75,15 +77,44 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, Any]]:
     tool_executor = ToolExecutor(registry)
     state["tool_executor"] = tool_executor
     
-    # Initialize AgentRuntime - the SINGLE orchestration point
-    # This is where all agent execution flows through
+    # ====================================================================
+    # Initialize Domain System
+    # ====================================================================
+    from src.domains import (
+        DomainRegistry,
+        DomainAwareRuntime,
+        create_default_resolver,
+    )
+    
+    # Load domain profiles from config directory
+    domains_path = Path(__file__).parent.parent.parent / "config" / "domains"
+    
+    if domains_path.exists():
+        domain_registry = DomainRegistry.from_directory(domains_path)
+        print(f"Loaded {len(domain_registry)} domain profiles from {domains_path}")
+        for profile in domain_registry:
+            print(f"  - {profile.name} v{profile.version}: {profile.description[:50]}...")
+    else:
+        # Create empty registry with default domain
+        domain_registry = DomainRegistry()
+        print("No domain profiles found, using default domain only")
+    
+    state["domain_registry"] = domain_registry
+    
+    # Create domain resolver with default keyword rules
+    domain_resolver = create_default_resolver(domain_registry)
+    state["domain_resolver"] = domain_resolver
+    
+    # ====================================================================
+    # Initialize AgentRuntime (base) and DomainAwareRuntime
+    # ====================================================================
     from src.runtime import AgentRuntime, RuntimeConfig, create_runtime
     
     # Create LLM adapter based on settings
     llm_adapter = await _create_llm_adapter(settings)
     
     if llm_adapter:
-        # Create runtime with all components
+        # Create base runtime config (will be overridden by domain profiles)
         runtime_config = RuntimeConfig(
             model=settings.llm.default_model,
             temperature=settings.llm.default_temperature,
@@ -95,14 +126,30 @@ async def lifespan(app: FastAPI) -> AsyncIterator[dict[str, Any]]:
             enable_tools=True,
         )
         
-        state["agent_runtime"] = create_runtime(
+        # Create base AgentRuntime (for non-domain-aware access)
+        base_runtime = create_runtime(
             llm=llm_adapter,
             tool_executor=tool_executor,
             config=runtime_config,
         )
+        state["agent_runtime"] = base_runtime
+        
+        # Create DomainAwareRuntime (the recommended runtime)
+        domain_aware_runtime = DomainAwareRuntime(
+            registry=domain_registry,
+            llm=llm_adapter,
+            tool_executor=tool_executor,
+            resolver=domain_resolver,
+            enable_inference=True,
+            inference_threshold=0.6,
+        )
+        state["domain_aware_runtime"] = domain_aware_runtime
+        
+        print("Domain-aware runtime initialized successfully")
     else:
         # Create a placeholder runtime for development/testing
         state["agent_runtime"] = None
+        state["domain_aware_runtime"] = None
         print("Warning: No LLM adapter configured. Chat endpoints will not work.")
     
     # Store in app state
@@ -199,10 +246,11 @@ def create_app(
         )
     
     # Include routers
-    from src.api.routes import chat, sessions, tools, admin, health
+    from src.api.routes import chat, sessions, tools, admin, health, domains
     
     app.include_router(health.router, tags=["health"])
     app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
+    app.include_router(domains.router, prefix="/api/v1", tags=["domains"])
     app.include_router(sessions.router, prefix="/api/v1", tags=["sessions"])
     app.include_router(tools.router, prefix="/api/v1", tags=["tools"])
     app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])

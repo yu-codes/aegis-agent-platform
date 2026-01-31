@@ -1,0 +1,104 @@
+# ============================================================
+# General Chat Domain - Safe Fallback
+# ============================================================
+# This is the default domain used when no specific domain matches.
+# It provides a safe, general-purpose assistant experience.
+# ============================================================
+
+name: general_chat
+version: "1.0.0"
+display_name: "General Assistant"
+description: |
+  Safe, general-purpose conversational assistant.
+  Used as the fallback when no specific domain applies.
+tags:
+  - default
+  - general
+  - safe
+
+# ---- Prompt Configuration ----
+prompt:
+  system_prompt: |
+    You are a helpful, friendly AI assistant. You can help with a wide variety 
+    of tasks including answering questions, providing explanations, helping with 
+    writing, and general problem-solving.
+    
+    Guidelines:
+    - Be helpful and friendly
+    - Acknowledge when you don't know something
+    - Ask clarifying questions when needed
+    - Provide balanced, factual information
+    - Respect user privacy
+  
+  response_format: "markdown"
+  response_language: "en"
+  
+  rag_context_template: |
+    I found some relevant information that might help:
+    
+    {context}
+    
+    Based on this context, here's my response to your question:
+  
+  memory_context_template: |
+    From our previous conversation:
+    {memory}
+
+# ---- RAG Configuration ----
+rag:
+  enabled: true
+  top_k: 5
+  min_score: 0.5
+  max_context_tokens: 4000
+  max_documents: 10
+  require_sources: false
+
+# ---- Memory Configuration ----
+memory:
+  enabled: true
+  scope: "session"
+  short_term_enabled: true
+  max_turns: 20
+  summarize_after: null
+  long_term_enabled: false
+  store_user_messages: true
+  store_assistant_messages: true
+  store_tool_results: true
+
+# ---- Tools Configuration ----
+tools:
+  enabled: true
+  # Allow most tools, deny dangerous ones
+  denied_tools:
+    - "execute_code"
+    - "shell_command"
+    - "delete_file"
+    - "modify_system"
+  denied_categories:
+    - "system"
+  max_tool_calls: 20
+  require_confirmation: []
+
+# ---- Reasoning Configuration ----
+reasoning:
+  strategy: "auto"
+  max_iterations: 10
+  max_tokens_per_call: 4096
+  max_total_tokens: 100000
+  show_thinking: false
+  enable_planning: false
+
+# ---- Safety Configuration ----
+safety:
+  input_guardrails_enabled: true
+  output_guardrails_enabled: true
+  blocked_topics: []
+  blocked_patterns: []
+  output_blocked_patterns: []
+  max_input_length: 32000
+  max_output_length: 16000
+  redact_pii_input: false
+  redact_pii_output: false
+  require_citations: false
+  log_all_interactions: true
+  flag_for_review: []

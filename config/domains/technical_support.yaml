@@ -1,0 +1,170 @@
+# ============================================================
+# Technical Support Domain
+# ============================================================
+# Specialized domain for IT support and troubleshooting.
+# Optimized for diagnosing issues and guiding users through
+# resolution steps.
+# ============================================================
+
+name: technical_support
+version: "1.0.0"
+display_name: "Technical Support Agent"
+description: |
+  IT support specialist for troubleshooting software issues,
+  guiding installations, and resolving technical problems.
+tags:
+  - support
+  - technical
+  - it
+  - troubleshooting
+
+# ---- Prompt Configuration ----
+prompt:
+  system_prompt: |
+    You are an expert IT support specialist with deep knowledge of software 
+    systems, common technical issues, and troubleshooting methodologies.
+    
+    Your approach:
+    1. GATHER INFORMATION: Ask targeted diagnostic questions
+    2. DIAGNOSE: Identify the root cause systematically
+    3. GUIDE: Provide clear, step-by-step solutions
+    4. VERIFY: Confirm the issue is resolved
+    5. DOCUMENT: Suggest preventive measures
+    
+    Communication style:
+    - Be patient and empathetic - users may be frustrated
+    - Use clear, jargon-free language when possible
+    - Explain technical concepts when needed
+    - Provide numbered steps for procedures
+    - Always confirm before suggesting destructive actions
+    
+    Never:
+    - Make assumptions about the user's technical level
+    - Skip verification steps
+    - Suggest solutions that could cause data loss without warning
+  
+  persona: |
+    Friendly, patient IT professional who has seen every issue before.
+    Calm under pressure. Excellent at explaining complex topics simply.
+  
+  response_format: "markdown"
+  response_language: "en"
+  
+  rag_context_template: |
+    📚 **Relevant Documentation:**
+    
+    {context}
+    
+    Based on our knowledge base and your issue, here's my analysis:
+  
+  memory_context_template: |
+    📝 **From our troubleshooting session:**
+    {memory}
+
+# ---- RAG Configuration ----
+rag:
+  enabled: true
+  collection: "support_docs"  # Specific documentation collection
+  top_k: 8
+  min_score: 0.6
+  max_context_tokens: 6000
+  max_documents: 15
+  require_sources: false
+  rerank: true  # Rerank for better relevance
+  metadata_filters:
+    type: "documentation"
+  filter_from_context:
+    - "product"
+    - "version"
+
+# ---- Memory Configuration ----
+memory:
+  enabled: true
+  scope: "session"  # Keep troubleshooting context
+  short_term_enabled: true
+  max_turns: 30  # Longer sessions for complex issues
+  summarize_after: 20
+  long_term_enabled: true  # Remember past issues
+  long_term_retrieval_k: 3
+  store_user_messages: true
+  store_assistant_messages: true
+  store_tool_results: true
+
+# ---- Tools Configuration ----
+tools:
+  enabled: true
+  allowed_tools:
+    - "search_knowledge_base"
+    - "search_documentation"
+    - "create_support_ticket"
+    - "get_ticket_status"
+    - "search_known_issues"
+    - "check_system_status"
+    - "get_product_info"
+    - "calculator"
+  denied_tools:
+    - "execute_code"
+    - "shell_command"
+    - "modify_system"
+    - "delete_file"
+    - "payment_processing"
+  max_tool_calls: 30
+  require_confirmation:
+    - "create_support_ticket"
+  tool_configs:
+    search_knowledge_base:
+      max_results: 10
+      include_internal: false
+    create_support_ticket:
+      auto_assign: true
+      priority_detection: true
+
+# ---- Reasoning Configuration ----
+reasoning:
+  strategy: "react"  # Step-by-step reasoning for troubleshooting
+  max_iterations: 15  # Complex issues need more steps
+  max_tokens_per_call: 4096
+  max_total_tokens: 150000
+  show_thinking: false
+  enable_planning: true  # Enable planning for complex issues
+  planning_threshold: 5  # Trigger planning after 5 steps
+
+# ---- Safety Configuration ----
+safety:
+  input_guardrails_enabled: true
+  output_guardrails_enabled: true
+  blocked_topics:
+    - "hacking"
+    - "bypassing_security"
+    - "piracy"
+  blocked_patterns:
+    - "(?i)crack(ed|ing)?\\s+(software|password)"
+    - "(?i)bypass\\s+(activation|license)"
+  output_blocked_patterns:
+    - "(?i)serial\\s+key"
+    - "(?i)license\\s+crack"
+  max_input_length: 50000  # Allow detailed error logs
+  max_output_length: 20000
+  redact_pii_input: false
+  redact_pii_output: true  # Don't echo PII in solutions
+  pii_categories:
+    - "email"
+    - "phone"
+    - "credit_card"
+  require_citations: false
+  disclaimer: null
+  log_all_interactions: true
+  flag_for_review:
+    - "escalate"
+    - "manager"
+    - "legal"
+    - "sue"
+
+# ---- Custom Domain Data ----
+custom:
+  ticket_system: "zendesk"
+  sla_hours: 24
+  escalation_keywords:
+    - "urgent"
+    - "critical"
+    - "production down"

@@ -1,0 +1,205 @@
+# ============================================================
+# Financial Analysis Domain
+# ============================================================
+# Specialized domain for financial analysis, portfolio review,
+# and investment research. Highest safety and compliance
+# requirements.
+# ============================================================
+
+name: financial_analysis
+version: "1.0.0"
+display_name: "Financial Analysis Assistant"
+description: |
+  Financial analyst assistant for portfolio analysis, market research,
+  and investment insights. Operates under strict compliance rules.
+tags:
+  - finance
+  - investment
+  - analysis
+  - regulated
+
+# ---- Prompt Configuration ----
+prompt:
+  system_prompt: |
+    You are a financial analysis assistant with expertise in:
+    - Portfolio analysis and optimization
+    - Market research and trends
+    - Financial statement analysis
+    - Risk assessment
+    - Investment research
+    
+    CRITICAL GUIDELINES:
+    
+    1. NEVER provide specific investment advice or recommendations
+       - You may analyze and explain, but not advise
+       - Always encourage consultation with a licensed advisor
+    
+    2. ALWAYS include appropriate disclaimers
+       - Past performance doesn't guarantee future results
+       - All investments carry risk
+    
+    3. SOURCE ALL DATA
+       - Cite sources for statistics and claims
+       - Note data timestamps (markets change rapidly)
+    
+    4. ACKNOWLEDGE LIMITATIONS
+       - You don't have real-time market data
+       - Your knowledge has a cutoff date
+       - Complex tax situations need professional advice
+    
+    5. MAINTAIN OBJECTIVITY
+       - Present multiple perspectives
+       - Avoid emotional language about markets
+       - Distinguish facts from opinions
+    
+    Your role is to EDUCATE and ANALYZE, not to ADVISE.
+  
+  persona: |
+    Seasoned financial analyst with CFA credentials.
+    Methodical, data-driven, appropriately cautious.
+    Explains complex financial concepts clearly.
+  
+  response_format: "markdown"
+  response_language: "en"
+  
+  rag_context_template: |
+    📊 **Market Intelligence & Research:**
+    
+    {context}
+    
+    ---
+    
+    Based on this research, here's my analysis:
+  
+  memory_context_template: |
+    💼 **Context from our discussion:**
+    {memory}
+
+# ---- RAG Configuration ----
+rag:
+  enabled: true
+  collection: "financial_research"
+  top_k: 10
+  min_score: 0.7  # Higher threshold for accuracy
+  max_context_tokens: 8000
+  max_documents: 20
+  require_sources: true  # MUST cite sources
+  rerank: true
+  metadata_filters:
+    content_type: "financial"
+    verified: true
+  filter_from_context:
+    - "asset_class"
+    - "region"
+    - "time_period"
+
+# ---- Memory Configuration ----
+memory:
+  enabled: true
+  scope: "user"  # Remember user's portfolio context
+  short_term_enabled: true
+  max_turns: 25
+  summarize_after: 15
+  long_term_enabled: true
+  long_term_retrieval_k: 5
+  store_user_messages: true
+  store_assistant_messages: true
+  store_tool_results: true
+  retention_days: 365  # Keep for compliance
+
+# ---- Tools Configuration ----
+tools:
+  enabled: true
+  allowed_tools:
+    - "search_financial_news"
+    - "get_market_data"
+    - "calculate_returns"
+    - "portfolio_analyzer"
+    - "risk_calculator"
+    - "compare_securities"
+    - "get_company_info"
+    - "search_sec_filings"
+    - "calculator"
+  denied_tools:
+    - "execute_trade"  # Never execute trades
+    - "transfer_funds"  # Never move money
+    - "modify_portfolio"  # Never modify holdings
+    - "shell_command"
+    - "execute_code"
+  max_tool_calls: 25
+  require_confirmation:
+    - "portfolio_analyzer"  # Confirm before analyzing personal data
+  tool_configs:
+    get_market_data:
+      delay_seconds: 15  # Not real-time
+      disclaimer: "Data may be delayed"
+    search_sec_filings:
+      max_results: 5
+      filing_types:
+        - "10-K"
+        - "10-Q"
+        - "8-K"
+
+# ---- Reasoning Configuration ----
+reasoning:
+  strategy: "tool_calling"  # Efficient for data lookups
+  max_iterations: 12
+  model: null  # Use default
+  temperature: 0.3  # Lower temperature for accuracy
+  max_tokens_per_call: 4096
+  max_total_tokens: 120000
+  show_thinking: false
+  enable_planning: true
+  planning_threshold: 4
+
+# ---- Safety Configuration ----
+safety:
+  input_guardrails_enabled: true
+  output_guardrails_enabled: true
+  blocked_topics:
+    - "insider_trading"
+    - "market_manipulation"
+    - "tax_evasion"
+    - "money_laundering"
+  blocked_patterns:
+    - "(?i)insider\\s+(info|tip|trading)"
+    - "(?i)guaranteed\\s+(returns|profit)"
+    - "(?i)pump\\s+and\\s+dump"
+  output_blocked_patterns:
+    - "(?i)you\\s+should\\s+(buy|sell)"
+    - "(?i)I\\s+recommend\\s+(buying|selling)"
+    - "(?i)guaranteed"
+  max_input_length: 50000
+  max_output_length: 25000
+  redact_pii_input: true  # Protect financial data
+  redact_pii_output: true
+  pii_categories:
+    - "email"
+    - "phone"
+    - "ssn"
+    - "credit_card"
+    - "account_number"
+    - "routing_number"
+  require_citations: true  # Always cite sources
+  disclaimer: |
+    ⚠️ **Disclaimer**: This information is for educational purposes only 
+    and does not constitute financial advice. Past performance does not 
+    guarantee future results. Please consult a licensed financial advisor 
+    for personalized investment advice.
+  log_all_interactions: true  # Required for compliance
+  flag_for_review:
+    - "lawsuit"
+    - "regulatory"
+    - "complaint"
+    - "guaranteed returns"
+
+# ---- Custom Domain Data ----
+custom:
+  compliance_level: "high"
+  data_retention_years: 7
+  audit_frequency: "daily"
+  require_suitability_check: true
+  markets:
+    - "US"
+    - "EU"
+    - "APAC"

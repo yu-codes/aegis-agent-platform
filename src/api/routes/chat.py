@@ -2,7 +2,7 @@
 Chat API Routes
 
 Main chat endpoint with streaming support.
-Uses AgentRuntime as the single orchestration point.
+Uses DomainAwareRuntime for domain-specific agent behavior.
 """
 
 from typing import Any
@@ -13,13 +13,14 @@ from pydantic import BaseModel, Field
 
 from src.api.dependencies import (
     get_session_manager,
-    get_agent_runtime,
+    get_domain_aware_runtime,
     get_current_user,
     get_trace_context,
 )
 from src.api.streaming import StreamingResponse, stream_sse
 from src.memory import SessionManager
-from src.runtime import AgentRuntime, AgentEvent, AgentEventType
+from src.domains import DomainAwareRuntime, ResolutionMethod
+from src.runtime import AgentEvent, AgentEventType
 
 router = APIRouter()
 
@@ -29,6 +30,12 @@ class ChatRequest(BaseModel):
     
     message: str = Field(..., min_length=1, max_length=100000)
     session_id: UUID | None = None
+    
+    # Domain configuration
+    domain: str | None = Field(
+        default=None,
+        description="Explicit domain to use (e.g., 'technical_support', 'financial_analysis')",
+    )
     
     # Options
     stream: bool = True
@@ -47,6 +54,10 @@ class ChatResponse(BaseModel):
     message: str
     session_id: UUID
     
+    # Domain info
+    domain: str | None = None
+    domain_resolution_method: str | None = None
+    
     # Metadata
     model: str | None = None
     usage: dict[str, int] | None = None
@@ -61,7 +72,7 @@ class ChatResponse(BaseModel):
 async def chat(
     request: ChatRequest,
     session_manager: SessionManager = Depends(get_session_manager),
-    runtime: AgentRuntime = Depends(get_agent_runtime),
+    runtime: DomainAwareRuntime = Depends(get_domain_aware_runtime),
     user: dict | None = Depends(get_current_user),
     trace_ctx: dict = Depends(get_trace_context),
 ):
@@ -69,7 +80,12 @@ async def chat(
     Chat with the agent.
     
     Supports both streaming (SSE) and non-streaming responses.
-    All execution flows through AgentRuntime - the single orchestration point.
+    All execution flows through DomainAwareRuntime for domain-specific behavior.
+    
+    Domain selection:
+    - Explicit: Pass `domain` parameter
+    - Inferred: Auto-detected from message content
+    - Fallback: Uses default general domain
     """
     from src.core.types import Message, MessageRole, ExecutionContext
     
@@ -96,17 +112,18 @@ async def chat(
     history = list(session.messages) if session.messages else None
     
     if request.stream:
-        # Return streaming response via AgentRuntime
+        # Return streaming response via DomainAwareRuntime
         return StreamingResponse(
-            _stream_response(runtime, request.message, context, history, session, session_manager),
+            _stream_response(runtime, request.message, context, history, session, session_manager, request.domain),
             media_type="text/event-stream",
         )
     else:
-        # Non-streaming response via AgentRuntime
+        # Non-streaming response via DomainAwareRuntime
         result = await runtime.run(
             message=request.message,
             context=context,
             history=history,
+            domain=request.domain,
         )
         
         # Persist messages to session
@@ -114,9 +131,17 @@ async def chat(
         session.add_message(Message(role=MessageRole.ASSISTANT, content=result.content))
         await session_manager.save(session)
         
+        # Get domain resolution info
+        domain_info = await runtime.resolve_domain(
+            explicit_domain=request.domain,
+            content=request.message,
+        )
+        
         return ChatResponse(
             message=result.content,
             session_id=session.id,
+            domain=domain_info.profile.name,
+            domain_resolution_method=domain_info.method.value,
             model=result.model,
             usage={
                 "total_tokens": result.total_tokens,
@@ -132,23 +157,29 @@ async def chat(
 
 
 async def _stream_response(
-    runtime: AgentRuntime,
+    runtime: DomainAwareRuntime,
     message: str,
     context,
     history,
     session,
     session_manager,
+    domain: str | None = None,
 ):
-    """Generate streaming response via AgentRuntime."""
+    """Generate streaming response via DomainAwareRuntime."""
     import json
     from src.core.types import Message, MessageRole
+    from src.domains import DomainEventType
     
     yield f"event: start\ndata: {json.dumps({'session_id': str(session.id)})}\n\n"
     
     final_content = ""
     
-    async for event in runtime.run_stream(message, context, history):
-        if event.type == AgentEventType.CONTENT_CHUNK:
+    async for event in runtime.run_stream(message, context, history, domain=domain):
+        # Handle domain resolution event
+        if event.data.get("event_type") == DomainEventType.DOMAIN_RESOLVED:
+            yield f"event: domain\ndata: {json.dumps(event.data)}\n\n"
+        
+        elif event.type == AgentEventType.CONTENT_CHUNK:
             chunk = event.data.get("content", "")
             final_content += chunk
             yield f"event: token\ndata: {json.dumps({'content': chunk})}\n\n"

@@ -15,6 +15,7 @@ from fastapi import Depends, HTTPException, Request, Header
 from src.memory import SessionManager, Session
 from src.tools import ToolRegistry
 from src.runtime import AgentRuntime
+from src.domains import DomainAwareRuntime, DomainRegistry
 
 
 async def get_components(request: Request) -> dict[str, Any]:
@@ -40,18 +41,47 @@ async def get_tool_registry(
     return components["tool_registry"]
 
 
+async def get_domain_registry(
+    components: dict[str, Any] = Depends(get_components),
+) -> DomainRegistry:
+    """Get domain registry."""
+    if "domain_registry" not in components:
+        raise HTTPException(status_code=503, detail="Domain registry not available")
+    return components["domain_registry"]
+
+
 async def get_agent_runtime(
     components: dict[str, Any] = Depends(get_components),
 ) -> AgentRuntime:
     """
-    Get the AgentRuntime - the single orchestration point for agent execution.
+    Get the AgentRuntime - the base orchestration point.
     
-    This is the canonical way to get an agent instance. All agent execution
-    must go through the runtime.
+    For domain-aware execution, use get_domain_aware_runtime instead.
     """
     if "agent_runtime" not in components:
         raise HTTPException(status_code=503, detail="Agent runtime not available")
     return components["agent_runtime"]
+
+
+async def get_domain_aware_runtime(
+    components: dict[str, Any] = Depends(get_components),
+) -> DomainAwareRuntime:
+    """
+    Get the DomainAwareRuntime - the domain-aware orchestration point.
+    
+    This is the recommended runtime for production use. It resolves
+    the appropriate domain profile before execution and configures
+    all components accordingly.
+    
+    Domain selection:
+    - Explicit: API parameter specifies domain
+    - Inferred: Lightweight classification of input
+    - Context: From session/user metadata  
+    - Fallback: Safe default domain
+    """
+    if "domain_aware_runtime" not in components:
+        raise HTTPException(status_code=503, detail="Domain-aware runtime not available")
+    return components["domain_aware_runtime"]
 
 
 async def get_session(
