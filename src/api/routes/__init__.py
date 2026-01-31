@@ -2,6 +2,6 @@
 API Routes Package
 """
 
-from src.api.routes import chat, sessions, tools, admin, health
+from src.api.routes import admin, chat, health, sessions, tools
 
-__all__ = ["chat", "sessions", "tools", "admin", "health"]
+__all__ = ["admin", "chat", "health", "sessions", "tools"]

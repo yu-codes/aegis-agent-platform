@@ -15,14 +15,14 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
-from src.core.types import LLMResponse, Message, ToolCall
+from src.config.settings import LLMSettings
 from src.core.exceptions import (
+    ContextLengthExceededError,
     LLMConnectionError,
     LLMRateLimitError,
     LLMResponseError,
-    ContextLengthExceededError,
 )
-from src.config.settings import LLMSettings
+from src.core.types import LLMResponse, Message, ToolCall
 from src.reasoning.llm.base import BaseLLMAdapter, convert_messages_to_dicts
 
 # Lazy imports to avoid requiring openai if not used
@@ -35,11 +35,10 @@ def _get_openai():
     if _openai_client is None:
         try:
             import openai
+
             _openai_client = openai
         except ImportError:
-            raise ImportError(
-                "openai package required. Install with: pip install openai"
-            )
+            raise ImportError("openai package required. Install with: pip install openai")
     return _openai_client
 
 
@@ -48,18 +47,17 @@ def _get_tiktoken():
     if _tiktoken is None:
         try:
             import tiktoken
+
             _tiktoken = tiktoken
         except ImportError:
-            raise ImportError(
-                "tiktoken package required. Install with: pip install tiktoken"
-            )
+            raise ImportError("tiktoken package required. Install with: pip install tiktoken")
     return _tiktoken
 
 
 class OpenAIAdapter(BaseLLMAdapter):
     """
     OpenAI API adapter.
-    
+
     Supports:
     - GPT-4o, GPT-4, GPT-3.5 series
     - Function/tool calling
@@ -67,35 +65,35 @@ class OpenAIAdapter(BaseLLMAdapter):
     - JSON mode
     - Vision (with supported models)
     """
-    
+
     def __init__(self, settings: LLMSettings):
         super().__init__(settings)
-        
+
         openai = _get_openai()
-        
+
         # Build client configuration
         client_kwargs: dict[str, Any] = {
             "timeout": settings.request_timeout,
             "max_retries": 0,  # We handle retries ourselves
         }
-        
+
         if settings.openai_api_key:
             client_kwargs["api_key"] = settings.openai_api_key.get_secret_value()
-        
+
         if settings.openai_base_url:
             client_kwargs["base_url"] = settings.openai_base_url
-        
+
         if settings.openai_org_id:
             client_kwargs["organization"] = settings.openai_org_id
-        
+
         self._client = openai.AsyncOpenAI(**client_kwargs)
         self._default_model = settings.openai_default_model
         self._encoding_cache: dict[str, Any] = {}
-    
+
     @property
     def provider_name(self) -> str:
         return "openai"
-    
+
     async def _do_complete(
         self,
         messages: list[Message],
@@ -110,31 +108,31 @@ class OpenAIAdapter(BaseLLMAdapter):
     ) -> LLMResponse:
         """Execute a chat completion request."""
         openai = _get_openai()
-        
+
         model = model or self._default_model
         temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
-        
+
         request_kwargs: dict[str, Any] = {
             "model": model,
             "messages": convert_messages_to_dicts(messages),
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        
+
         if tools:
             request_kwargs["tools"] = tools
             if tool_choice:
                 request_kwargs["tool_choice"] = tool_choice
-        
+
         if stop:
             request_kwargs["stop"] = stop
-        
+
         # Handle extra kwargs (e.g., response_format for JSON mode)
         request_kwargs.update(kwargs)
-        
+
         start_time = time.perf_counter()
-        
+
         try:
             response = await self._client.chat.completions.create(**request_kwargs)
         except openai.RateLimitError as e:
@@ -156,13 +154,13 @@ class OpenAIAdapter(BaseLLMAdapter):
             raise LLMResponseError(str(e), cause=e)
         except openai.APIError as e:
             raise LLMResponseError(str(e), cause=e)
-        
+
         latency_ms = (time.perf_counter() - start_time) * 1000
-        
+
         # Parse response
         choice = response.choices[0]
         content = choice.message.content
-        
+
         # Parse tool calls if present
         tool_calls = []
         if choice.message.tool_calls:
@@ -171,13 +169,15 @@ class OpenAIAdapter(BaseLLMAdapter):
                     args = json.loads(tc.function.arguments)
                 except json.JSONDecodeError:
                     args = {"raw": tc.function.arguments}
-                
-                tool_calls.append(ToolCall(
-                    id=tc.id,
-                    name=tc.function.name,
-                    arguments=args,
-                ))
-        
+
+                tool_calls.append(
+                    ToolCall(
+                        id=tc.id,
+                        name=tc.function.name,
+                        arguments=args,
+                    )
+                )
+
         return LLMResponse(
             content=content,
             tool_calls=tool_calls,
@@ -187,7 +187,7 @@ class OpenAIAdapter(BaseLLMAdapter):
             finish_reason=choice.finish_reason,
             latency_ms=latency_ms,
         )
-    
+
     async def _do_stream(
         self,
         messages: list[Message],
@@ -201,11 +201,11 @@ class OpenAIAdapter(BaseLLMAdapter):
     ) -> AsyncIterator[str | ToolCall]:
         """Stream a chat completion response."""
         openai = _get_openai()
-        
+
         model = model or self._default_model
         temperature = temperature if temperature is not None else self.settings.default_temperature
         max_tokens = max_tokens or self.settings.default_max_tokens
-        
+
         request_kwargs: dict[str, Any] = {
             "model": model,
             "messages": convert_messages_to_dicts(messages),
@@ -213,15 +213,15 @@ class OpenAIAdapter(BaseLLMAdapter):
             "max_tokens": max_tokens,
             "stream": True,
         }
-        
+
         if tools:
             request_kwargs["tools"] = tools
-        
+
         if stop:
             request_kwargs["stop"] = stop
-        
+
         request_kwargs.update(kwargs)
-        
+
         try:
             stream = await self._client.chat.completions.create(**request_kwargs)
         except openai.RateLimitError as e:
@@ -230,20 +230,20 @@ class OpenAIAdapter(BaseLLMAdapter):
             raise LLMConnectionError(str(e), cause=e)
         except openai.APIError as e:
             raise LLMResponseError(str(e), cause=e)
-        
+
         # Accumulate tool calls across chunks
         tool_call_accumulators: dict[int, dict[str, Any]] = {}
-        
+
         async for chunk in stream:
             if not chunk.choices:
                 continue
-            
+
             delta = chunk.choices[0].delta
-            
+
             # Yield content chunks
             if delta.content:
                 yield delta.content
-            
+
             # Accumulate tool calls
             if delta.tool_calls:
                 for tc in delta.tool_calls:
@@ -254,7 +254,7 @@ class OpenAIAdapter(BaseLLMAdapter):
                             "name": "",
                             "arguments": "",
                         }
-                    
+
                     if tc.id:
                         tool_call_accumulators[idx]["id"] = tc.id
                     if tc.function:
@@ -262,25 +262,25 @@ class OpenAIAdapter(BaseLLMAdapter):
                             tool_call_accumulators[idx]["name"] = tc.function.name
                         if tc.function.arguments:
                             tool_call_accumulators[idx]["arguments"] += tc.function.arguments
-        
+
         # Yield complete tool calls at the end
         for acc in tool_call_accumulators.values():
             try:
                 args = json.loads(acc["arguments"])
             except json.JSONDecodeError:
                 args = {"raw": acc["arguments"]}
-            
+
             yield ToolCall(
                 id=acc["id"],
                 name=acc["name"],
                 arguments=args,
             )
-    
+
     async def count_tokens(self, text: str, model: str | None = None) -> int:
         """Count tokens using tiktoken."""
         tiktoken = _get_tiktoken()
         model = model or self._default_model
-        
+
         # Get or create encoding
         if model not in self._encoding_cache:
             try:
@@ -288,10 +288,10 @@ class OpenAIAdapter(BaseLLMAdapter):
             except KeyError:
                 # Fallback for unknown models
                 self._encoding_cache[model] = tiktoken.get_encoding("cl100k_base")
-        
+
         encoding = self._encoding_cache[model]
         return len(encoding.encode(text))
-    
+
     async def close(self) -> None:
         """Close the HTTP client."""
         await self._client.close()

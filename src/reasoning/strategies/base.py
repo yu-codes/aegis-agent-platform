@@ -16,16 +16,16 @@ Design decisions:
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any
 from enum import Enum
+from typing import Any
 
-from src.core.types import ExecutionContext, LLMResponse, Message, ToolResult
 from src.core.interfaces import ToolExecutorProtocol
+from src.core.types import ExecutionContext, Message, ToolResult
 
 
 class ReasoningEventType(str, Enum):
     """Types of events emitted during reasoning."""
-    
+
     STARTED = "started"
     THINKING = "thinking"
     TOOL_CALL_REQUESTED = "tool_call_requested"
@@ -39,10 +39,10 @@ class ReasoningEventType(str, Enum):
 class ReasoningEvent:
     """
     Event emitted during reasoning process.
-    
+
     Used for observability and streaming responses.
     """
-    
+
     type: ReasoningEventType
     data: Any = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -52,10 +52,10 @@ class ReasoningEvent:
 class ReasoningResult:
     """
     Final result of a reasoning process.
-    
+
     Contains the response plus metadata for tracking.
     """
-    
+
     response: str
     tool_results: list[ToolResult] = field(default_factory=list)
     iterations: int = 0
@@ -67,18 +67,18 @@ class ReasoningResult:
 class ReasoningStrategy(ABC):
     """
     Abstract base for reasoning strategies.
-    
+
     Strategies define HOW the agent thinks and acts.
     They orchestrate LLM calls, tool execution, and
     iteration until a final response is produced.
     """
-    
+
     @property
     @abstractmethod
     def name(self) -> str:
         """Strategy identifier."""
         pass
-    
+
     @abstractmethod
     async def reason(
         self,
@@ -90,18 +90,18 @@ class ReasoningStrategy(ABC):
     ) -> ReasoningResult:
         """
         Execute reasoning and return final result.
-        
+
         Args:
             messages: Conversation history
             context: Execution context with permissions/limits
             tools: Available tool definitions
             **kwargs: Strategy-specific parameters
-            
+
         Returns:
             ReasoningResult with response and metadata
         """
         pass
-    
+
     @abstractmethod
     async def reason_stream(
         self,
@@ -113,7 +113,7 @@ class ReasoningStrategy(ABC):
     ) -> AsyncIterator[ReasoningEvent]:
         """
         Execute reasoning with streaming events.
-        
+
         Yields events as reasoning progresses, enabling
         real-time updates to clients.
         """

@@ -4,21 +4,21 @@ Advanced Capabilities Module
 Multi-agent orchestration, critic agent, and plugin system.
 """
 
-from src.advanced.multi_agent import AgentPool, AgentOrchestrator, AgentDefinition
-from src.advanced.critic import CriticAgent, Critique, CriticStrategy
-from src.advanced.plugins import PluginManager, Plugin, PluginContext
+from src.advanced.critic import CriticAgent, CriticStrategy, Critique
+from src.advanced.multi_agent import AgentDefinition, AgentOrchestrator, AgentPool
+from src.advanced.plugins import Plugin, PluginContext, PluginManager
 
 __all__ = [
+    "AgentDefinition",
+    "AgentOrchestrator",
     # Multi-agent
     "AgentPool",
-    "AgentOrchestrator",
-    "AgentDefinition",
     # Critic
     "CriticAgent",
-    "Critique",
     "CriticStrategy",
-    # Plugins
-    "PluginManager",
+    "Critique",
     "Plugin",
     "PluginContext",
+    # Plugins
+    "PluginManager",
 ]

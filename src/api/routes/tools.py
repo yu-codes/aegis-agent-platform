@@ -7,15 +7,15 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from src.api.dependencies import get_tool_registry, get_current_user
-from src.tools import ToolRegistry, ToolCategory
+from src.api.dependencies import get_current_user, get_tool_registry
+from src.tools import ToolCategory, ToolRegistry
 
 router = APIRouter()
 
 
 class ToolInfo(BaseModel):
     """Tool information."""
-    
+
     name: str
     description: str
     category: str
@@ -26,7 +26,7 @@ class ToolInfo(BaseModel):
 
 class ToolListResponse(BaseModel):
     """List of tools."""
-    
+
     tools: list[ToolInfo]
     total: int
 
@@ -47,7 +47,7 @@ async def list_tools(
             raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
     else:
         tools = tool_registry.get_all_definitions()
-    
+
     return ToolListResponse(
         tools=[
             ToolInfo(
@@ -71,10 +71,10 @@ async def get_tool(
 ):
     """Get tool details."""
     tool = tool_registry.get(tool_name)
-    
+
     if tool is None:
         raise HTTPException(status_code=404, detail="Tool not found")
-    
+
     return ToolInfo(
         name=tool.name,
         description=tool.description,
@@ -87,7 +87,7 @@ async def get_tool(
 
 class ExecuteToolRequest(BaseModel):
     """Request to execute a tool."""
-    
+
     arguments: dict[str, Any] = {}
 
 
@@ -100,33 +100,33 @@ async def execute_tool(
 ):
     """
     Execute a tool directly.
-    
+
     Note: This is for testing/admin purposes.
     Normal tool execution happens through chat.
     """
     from src.core.types import ExecutionContext
     from src.tools.executor import ToolExecutor
-    
+
     tool = tool_registry.get(tool_name)
     if tool is None:
         raise HTTPException(status_code=404, detail="Tool not found")
-    
+
     # Create context
     context = ExecutionContext(
         user_id=user.get("id") if user else None,
     )
-    
+
     # Execute
     executor = ToolExecutor(tool_registry)
     result = await executor.execute(tool_name, request.arguments, context)
-    
+
     if result.error:
         return {
             "success": False,
             "error": result.error,
             "duration_ms": result.duration_ms,
         }
-    
+
     return {
         "success": True,
         "result": result.result,

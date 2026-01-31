@@ -10,12 +10,12 @@ ensuring components are properly wired without direct coupling.
 from typing import Any
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request, Header
+from fastapi import Depends, Header, HTTPException, Request
 
-from src.memory import SessionManager, Session
-from src.tools import ToolRegistry
-from src.runtime import AgentRuntime
 from src.domains import DomainAwareRuntime, DomainRegistry
+from src.memory import Session, SessionManager
+from src.runtime import AgentRuntime
+from src.tools import ToolRegistry
 
 
 async def get_components(request: Request) -> dict[str, Any]:
@@ -55,7 +55,7 @@ async def get_agent_runtime(
 ) -> AgentRuntime:
     """
     Get the AgentRuntime - the base orchestration point.
-    
+
     For domain-aware execution, use get_domain_aware_runtime instead.
     """
     if "agent_runtime" not in components:
@@ -68,15 +68,15 @@ async def get_domain_aware_runtime(
 ) -> DomainAwareRuntime:
     """
     Get the DomainAwareRuntime - the domain-aware orchestration point.
-    
+
     This is the recommended runtime for production use. It resolves
     the appropriate domain profile before execution and configures
     all components accordingly.
-    
+
     Domain selection:
     - Explicit: API parameter specifies domain
     - Inferred: Lightweight classification of input
-    - Context: From session/user metadata  
+    - Context: From session/user metadata
     - Fallback: Safe default domain
     """
     if "domain_aware_runtime" not in components:
@@ -102,13 +102,13 @@ async def get_current_user(
 ) -> dict[str, Any] | None:
     """
     Get the current user from request.
-    
+
     Returns None if not authenticated.
     """
     # Check if already validated by middleware
     if hasattr(request.state, "user"):
         return request.state.user
-    
+
     # Return None for unauthenticated requests
     return None
 

@@ -6,9 +6,9 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from src.api.dependencies import get_session_manager, get_current_user
+from src.api.dependencies import get_current_user, get_session_manager
 from src.memory import SessionManager
 
 router = APIRouter()
@@ -16,14 +16,14 @@ router = APIRouter()
 
 class CreateSessionRequest(BaseModel):
     """Request to create a new session."""
-    
+
     metadata: dict[str, Any] | None = None
     system_prompt: str | None = None
 
 
 class SessionResponse(BaseModel):
     """Session information."""
-    
+
     id: UUID
     user_id: str | None = None
     created_at: str
@@ -33,7 +33,7 @@ class SessionResponse(BaseModel):
 
 class SessionListResponse(BaseModel):
     """List of sessions."""
-    
+
     sessions: list[SessionResponse]
     total: int
 
@@ -49,7 +49,7 @@ async def create_session(
         user_id=user.get("id") if user else None,
         metadata=request.metadata if request else None,
     )
-    
+
     return SessionResponse(
         id=session.id,
         user_id=session.user_id,
@@ -68,23 +68,23 @@ async def list_sessions(
 ):
     """List user's sessions."""
     user_id = user.get("id") if user else None
-    
+
     # Get session IDs (offset is handled manually since backend doesn't support it)
     session_ids = await session_manager.list_sessions(
         user_id=user_id,
         limit=limit + offset,  # Get enough to handle offset
     )
-    
+
     # Apply offset manually
-    session_ids = session_ids[offset:offset + limit]
-    
+    session_ids = session_ids[offset : offset + limit]
+
     # Fetch full session objects
     sessions = []
     for sid in session_ids:
         session = await session_manager.get_session(sid)
         if session:
             sessions.append(session)
-    
+
     return SessionListResponse(
         sessions=[
             SessionResponse(
@@ -108,14 +108,14 @@ async def get_session(
 ):
     """Get session details."""
     session = await session_manager.get_session(session_id)
-    
+
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     # Check ownership
     if user and session.user_id and session.user_id != user.get("id"):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return SessionResponse(
         id=session.id,
         user_id=session.user_id,
@@ -134,12 +134,12 @@ async def get_session_messages(
 ):
     """Get messages from a session."""
     session = await session_manager.get_session(session_id)
-    
+
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     messages = session.messages[-limit:]
-    
+
     return {
         "messages": [
             {
@@ -162,14 +162,14 @@ async def delete_session(
 ):
     """Delete a session."""
     session = await session_manager.get_session(session_id)
-    
+
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     # Check ownership
     if user and session.user_id and session.user_id != user.get("id"):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     await session_manager.delete_session(session_id)
-    
+
     return {"status": "deleted", "session_id": str(session_id)}

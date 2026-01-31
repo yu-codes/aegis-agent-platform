@@ -21,10 +21,10 @@ async def get_stats(
     # Check admin role
     if "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin access required")
-    
-    session_manager = components.get("session_manager")
+
+    components.get("session_manager")
     tool_registry = components.get("tool_registry")
-    
+
     stats = {
         "sessions": {
             "active": 0,  # Would query from session manager
@@ -33,7 +33,7 @@ async def get_stats(
             "registered": len(tool_registry.get_all_definitions()) if tool_registry else 0,
         },
     }
-    
+
     return stats
 
 
@@ -44,12 +44,13 @@ async def get_metrics(
     """Get Prometheus metrics."""
     if "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin access required")
-    
+
     from src.observability.metrics import get_metrics_collector
-    
+
     collector = get_metrics_collector()
-    
+
     from starlette.responses import Response
+
     return Response(
         content=collector.to_prometheus(),
         media_type="text/plain",
@@ -58,7 +59,7 @@ async def get_metrics(
 
 class ConfigUpdate(BaseModel):
     """Configuration update request."""
-    
+
     key: str
     value: str
 
@@ -71,7 +72,7 @@ async def update_config(
     """Update configuration."""
     if "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin access required")
-    
+
     # Placeholder - would update configuration
     return {"status": "updated", "key": update.key}
 
@@ -85,7 +86,7 @@ async def get_audit_logs(
     """Get audit logs."""
     if "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin access required")
-    
+
     # Placeholder - would query audit logs
     return {"logs": [], "total": 0}
 
@@ -98,11 +99,11 @@ async def clear_cache(
     """Clear application caches."""
     if "admin" not in user.get("roles", []):
         raise HTTPException(status_code=403, detail="Admin access required")
-    
+
     # Clear Redis cache if available
     redis = components.get("redis")
     if redis:
         # Would selectively clear cache keys
         pass
-    
+
     return {"status": "cleared"}

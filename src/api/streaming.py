@@ -6,7 +6,8 @@ Server-Sent Events and streaming support.
 
 import asyncio
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from starlette.responses import StreamingResponse as StarletteStreamingResponse
 
@@ -14,13 +15,13 @@ from starlette.responses import StreamingResponse as StarletteStreamingResponse
 class EventStream:
     """
     Server-Sent Events (SSE) stream.
-    
+
     Formats events according to SSE spec.
     """
-    
+
     def __init__(self):
         self._queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
-    
+
     async def send(
         self,
         data: Any,
@@ -29,50 +30,52 @@ class EventStream:
         retry: int | None = None,
     ) -> None:
         """Send an event to the stream."""
-        await self._queue.put({
-            "data": data,
-            "event": event,
-            "id": id,
-            "retry": retry,
-        })
-    
+        await self._queue.put(
+            {
+                "data": data,
+                "event": event,
+                "id": id,
+                "retry": retry,
+            }
+        )
+
     async def close(self) -> None:
         """Close the stream."""
         await self._queue.put(None)
-    
+
     async def __aiter__(self) -> AsyncIterator[str]:
         """Iterate over formatted SSE events."""
         while True:
             event = await self._queue.get()
-            
+
             if event is None:
                 break
-            
+
             yield self._format_event(event)
-    
+
     def _format_event(self, event: dict[str, Any]) -> str:
         """Format event as SSE."""
         lines = []
-        
+
         if event.get("event"):
             lines.append(f"event: {event['event']}")
-        
+
         if event.get("id"):
             lines.append(f"id: {event['id']}")
-        
+
         if event.get("retry"):
             lines.append(f"retry: {event['retry']}")
-        
+
         # Format data
         data = event["data"]
         if isinstance(data, (dict, list)):
             data = json.dumps(data)
-        
+
         for line in str(data).split("\n"):
             lines.append(f"data: {line}")
-        
+
         lines.append("")  # Empty line to end event
-        
+
         return "\n".join(lines) + "\n"
 
 
@@ -101,7 +104,7 @@ async def stream_json_lines(
 ) -> AsyncIterator[str]:
     """
     Stream JSON objects as newline-delimited JSON.
-    
+
     Useful for streaming structured responses.
     """
     async for item in generator:
@@ -116,18 +119,18 @@ async def stream_sse(
     Stream events as SSE format.
     """
     event_id = 0
-    
+
     async for item in generator:
         event_id += 1
-        
+
         lines = [
             f"id: {event_id}",
             f"event: {event_type}",
             f"data: {json.dumps(item)}",
             "",
         ]
-        
+
         yield "\n".join(lines) + "\n"
-    
+
     # Send done event
     yield "event: done\ndata: {}\n\n"

@@ -18,81 +18,81 @@ Domain selection supports:
 
 Usage:
     from src.domains import DomainRegistry, DomainProfile, DomainAwareRuntime
-    
+
     registry = DomainRegistry.from_directory("config/domains")
     runtime = DomainAwareRuntime(registry=registry, llm=llm_adapter)
-    
+
     # Explicit domain
     result = await runtime.run(message, context, domain="financial_analysis")
-    
+
     # Auto-inferred domain
     result = await runtime.run(message, context)
 """
 
 from src.domains.profile import (
     DomainProfile,
+    MemoryConfig,
+    MemoryScopeType,
     PromptConfig,
     RAGConfig,
-    MemoryConfig,
-    ToolsConfig,
     ReasoningConfig,
-    SafetyConfig,
     ReasoningStrategyType,
-    MemoryScopeType,
+    SafetyConfig,
+    ToolsConfig,
 )
 from src.domains.registry import (
+    DEFAULT_DOMAIN,
+    DomainNotFoundError,
     DomainRegistry,
     DomainRegistryError,
-    DomainNotFoundError,
     DomainValidationError,
-    DEFAULT_DOMAIN,
 )
 from src.domains.resolver import (
     DomainResolver,
-    ResolutionResult,
-    ResolutionMethod,
     KeywordClassifier,
     KeywordRule,
-    create_resolver_with_keywords,
+    ResolutionMethod,
+    ResolutionResult,
     create_default_resolver,
+    create_resolver_with_keywords,
 )
 from src.domains.runtime import (
     DomainAwareRuntime,
     DomainAwareToolExecutor,
-    DomainExecutionContext,
     DomainEventType,
+    DomainExecutionContext,
     create_domain_aware_runtime,
 )
 
 __all__ = [
-    # Core profile types
-    "DomainProfile",
-    "PromptConfig",
-    "RAGConfig",
-    "MemoryConfig",
-    "ToolsConfig",
-    "ReasoningConfig",
-    "SafetyConfig",
-    "ReasoningStrategyType",
-    "MemoryScopeType",
-    # Registry
-    "DomainRegistry",
-    "DomainRegistryError",
-    "DomainNotFoundError",
-    "DomainValidationError",
     "DEFAULT_DOMAIN",
-    # Resolution
-    "DomainResolver",
-    "ResolutionResult",
-    "ResolutionMethod",
-    "KeywordClassifier",
-    "KeywordRule",
-    "create_resolver_with_keywords",
-    "create_default_resolver",
     # Runtime
     "DomainAwareRuntime",
     "DomainAwareToolExecutor",
-    "DomainExecutionContext",
     "DomainEventType",
+    "DomainExecutionContext",
+    "DomainNotFoundError",
+    # Core profile types
+    "DomainProfile",
+    # Registry
+    "DomainRegistry",
+    "DomainRegistryError",
+    # Resolution
+    "DomainResolver",
+    "DomainValidationError",
+    "KeywordClassifier",
+    "KeywordRule",
+    "MemoryConfig",
+    "MemoryScopeType",
+    "PromptConfig",
+    "RAGConfig",
+    "ReasoningConfig",
+    "ReasoningStrategyType",
+    "ResolutionMethod",
+    "ResolutionResult",
+    "SafetyConfig",
+    "ToolsConfig",
+    "create_default_resolver",
     "create_domain_aware_runtime",
+    "create_resolver_with_keywords",
 ]

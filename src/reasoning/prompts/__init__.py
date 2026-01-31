@@ -5,13 +5,13 @@ Templates and versioning for prompts.
 """
 
 from src.reasoning.prompts.template import (
-    PromptTemplate,
     PromptRegistry,
+    PromptTemplate,
     get_prompt_registry,
 )
 
 __all__ = [
-    "PromptTemplate",
     "PromptRegistry",
+    "PromptTemplate",
     "get_prompt_registry",
 ]

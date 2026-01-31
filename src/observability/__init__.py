@@ -4,26 +4,26 @@ Observability & Evaluation Module
 Tracing, metrics, logging, and evaluation harness.
 """
 
-from src.observability.tracing import Tracer, Span, SpanContext
-from src.observability.metrics import MetricsCollector, Counter, Histogram, Gauge
-from src.observability.logging import StructuredLogger, LogLevel
-from src.observability.evaluation import EvaluationHarness, EvalResult, EvalMetric
+from src.observability.evaluation import EvalMetric, EvalResult, EvaluationHarness
+from src.observability.logging import LogLevel, StructuredLogger
+from src.observability.metrics import Counter, Gauge, Histogram, MetricsCollector
+from src.observability.tracing import Span, SpanContext, Tracer
 
 __all__ = [
-    # Tracing
-    "Tracer",
-    "Span",
-    "SpanContext",
-    # Metrics
-    "MetricsCollector",
     "Counter",
-    "Histogram",
-    "Gauge",
-    # Logging
-    "StructuredLogger",
-    "LogLevel",
+    "EvalMetric",
+    "EvalResult",
     # Evaluation
     "EvaluationHarness",
-    "EvalResult",
-    "EvalMetric",
+    "Gauge",
+    "Histogram",
+    "LogLevel",
+    # Metrics
+    "MetricsCollector",
+    "Span",
+    "SpanContext",
+    # Logging
+    "StructuredLogger",
+    # Tracing
+    "Tracer",
 ]

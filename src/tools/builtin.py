@@ -4,12 +4,11 @@ Built-in Tools
 Common tools that ship with Aegis.
 """
 
-import asyncio
-import aiohttp
 from datetime import datetime
-from typing import Any
 
-from src.tools.registry import tool, ToolCategory
+import aiohttp
+
+from src.tools.registry import ToolCategory, tool
 
 
 @tool(
@@ -21,13 +20,13 @@ from src.tools.registry import tool, ToolCategory
 async def get_current_time(timezone: str = "UTC") -> str:
     """Get current time in the specified timezone."""
     from zoneinfo import ZoneInfo
-    
+
     try:
         tz = ZoneInfo(timezone)
         now = datetime.now(tz)
         return now.strftime("%Y-%m-%d %H:%M:%S %Z")
     except Exception as e:
-        return f"Error getting time: {str(e)}"
+        return f"Error getting time: {e!s}"
 
 
 @tool(
@@ -39,11 +38,11 @@ async def get_current_time(timezone: str = "UTC") -> str:
 async def calculate(expression: str) -> str:
     """
     Safely evaluate a mathematical expression.
-    
+
     Supports: +, -, *, /, **, sqrt, sin, cos, tan, log, abs, round
     """
     import math
-    
+
     # Safe subset of functions
     safe_functions = {
         "abs": abs,
@@ -61,17 +60,17 @@ async def calculate(expression: str) -> str:
         "pi": math.pi,
         "e": math.e,
     }
-    
+
     try:
         # Sanitize expression
         for char in expression:
             if char not in "0123456789+-*/().**, abcdefghijklmnopqrstuvwxyz":
                 return f"Invalid character in expression: {char}"
-        
+
         result = eval(expression, {"__builtins__": {}}, safe_functions)
         return str(result)
     except Exception as e:
-        return f"Error evaluating expression: {str(e)}"
+        return f"Error evaluating expression: {e!s}"
 
 
 @tool(
@@ -84,7 +83,7 @@ async def calculate(expression: str) -> str:
 async def web_search(query: str, num_results: int = 5) -> str:
     """
     Perform a web search.
-    
+
     Note: This is a placeholder. In production, integrate with
     a search API (Google, Bing, Serper, etc.)
     """
@@ -106,18 +105,18 @@ async def http_get(url: str, headers: dict[str, str] | None = None) -> str:
             async with session.get(url, headers=headers, timeout=25) as response:
                 if response.status != 200:
                     return f"HTTP Error: {response.status}"
-                
+
                 content = await response.text()
-                
+
                 # Truncate if too long
                 if len(content) > 10000:
                     content = content[:10000] + "\n[Content truncated...]"
-                
+
                 return content
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return "Request timed out"
     except Exception as e:
-        return f"Error fetching URL: {str(e)}"
+        return f"Error fetching URL: {e!s}"
 
 
 @tool(
@@ -129,14 +128,14 @@ async def http_get(url: str, headers: dict[str, str] | None = None) -> str:
 async def json_parse(json_string: str, path: str | None = None) -> str:
     """
     Parse JSON and optionally extract a value.
-    
+
     Path uses dot notation: "data.users.0.name"
     """
     import json
-    
+
     try:
         data = json.loads(json_string)
-        
+
         if path:
             for key in path.split("."):
                 if isinstance(data, list):
@@ -145,14 +144,14 @@ async def json_parse(json_string: str, path: str | None = None) -> str:
                     data = data[key]
                 else:
                     return f"Cannot traverse path at: {key}"
-        
+
         return json.dumps(data, indent=2)
     except json.JSONDecodeError as e:
-        return f"Invalid JSON: {str(e)}"
+        return f"Invalid JSON: {e!s}"
     except (KeyError, IndexError) as e:
-        return f"Path not found: {str(e)}"
+        return f"Path not found: {e!s}"
     except Exception as e:
-        return f"Error parsing JSON: {str(e)}"
+        return f"Error parsing JSON: {e!s}"
 
 
 @tool(
@@ -164,32 +163,32 @@ async def json_parse(json_string: str, path: str | None = None) -> str:
 async def text_summary(text: str, max_sentences: int = 3) -> str:
     """
     Create a simple extractive summary.
-    
+
     Note: This is a basic implementation. For better summaries,
     integrate with an LLM or specialized summarization model.
     """
     import re
-    
+
     # Split into sentences
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-    
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+
     if len(sentences) <= max_sentences:
         return text
-    
+
     # Simple heuristic: take first sentence and most "important" ones
     # (those with more words)
     scored = [(s, len(s.split())) for s in sentences]
     scored.sort(key=lambda x: x[1], reverse=True)
-    
+
     # Include first sentence and top scored ones
     summary_sentences = [sentences[0]]
-    for sentence, _ in scored[:max_sentences - 1]:
+    for sentence, _ in scored[: max_sentences - 1]:
         if sentence not in summary_sentences:
             summary_sentences.append(sentence)
-    
+
     # Sort by original order
     ordered = [s for s in sentences if s in summary_sentences][:max_sentences]
-    
+
     return " ".join(ordered)
 
 
@@ -212,10 +211,10 @@ async def string_transform(
         "strip": str.strip,
         "capitalize": str.capitalize,
     }
-    
+
     if operation not in operations:
         return f"Unknown operation: {operation}. Available: {list(operations.keys())}"
-    
+
     return operations[operation](text)
 
 

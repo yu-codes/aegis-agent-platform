@@ -4,6 +4,7 @@ Tests for API Endpoints
 
 import pytest
 from fastapi.testclient import TestClient
+
 from src.api.app import create_app
 
 
@@ -16,20 +17,20 @@ def client():
 
 class TestHealthEndpoints:
     """Tests for health check endpoints."""
-    
+
     def test_health_check(self, client):
         """Test main health endpoint."""
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] in ["healthy", "unhealthy"]
-    
+
     def test_liveness_check(self, client):
         """Test liveness probe."""
         response = client.get("/health/live")
         assert response.status_code == 200
         assert response.json()["status"] == "alive"
-    
+
     def test_readiness_check(self, client):
         """Test readiness probe."""
         response = client.get("/health/ready")
@@ -39,7 +40,7 @@ class TestHealthEndpoints:
 
 class TestToolsEndpoints:
     """Tests for tools endpoints."""
-    
+
     def test_list_tools(self, client):
         """Test listing available tools."""
         response = client.get("/tools")
@@ -47,7 +48,7 @@ class TestToolsEndpoints:
         data = response.json()
         assert "tools" in data
         assert isinstance(data["tools"], list)
-    
+
     def test_list_categories(self, client):
         """Test listing tool categories."""
         response = client.get("/tools/categories")
@@ -58,14 +59,14 @@ class TestToolsEndpoints:
 
 class TestSessionEndpoints:
     """Tests for session endpoints."""
-    
+
     def test_create_session(self, client):
         """Test creating a session."""
         response = client.post("/sessions")
         assert response.status_code == 200
         data = response.json()
         assert "session_id" in data
-    
+
     def test_get_nonexistent_session(self, client):
         """Test getting a session that doesn't exist."""
         import uuid

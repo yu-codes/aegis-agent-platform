@@ -4,11 +4,11 @@ Pytest Configuration
 Shared fixtures and configuration for tests.
 """
 
-import pytest
-from typing import AsyncGenerator
 from uuid import uuid4
 
-from src.core.types import Message, Session, ExecutionContext
+import pytest
+
+from src.core.types import ExecutionContext, Message, Session
 
 
 @pytest.fixture

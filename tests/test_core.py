@@ -2,31 +2,28 @@
 Tests for Core Types and Data Models
 """
 
-import pytest
 from uuid import uuid4
-from datetime import datetime
 
 from src.core.types import (
+    ExecutionContext,
+    LLMResponse,
     Message,
     Session,
     ToolCall,
     ToolResult,
-    LLMResponse,
-    ExecutionContext,
-    MessageRole,
 )
 
 
 class TestMessage:
     """Tests for Message type."""
-    
+
     def test_create_message(self):
         """Test creating a basic message."""
         msg = Message(role="user", content="Hello")
         assert msg.role == "user"
         assert msg.content == "Hello"
         assert msg.tool_calls is None
-    
+
     def test_message_with_tool_calls(self):
         """Test message with tool calls."""
         tool_call = ToolCall(
@@ -41,7 +38,7 @@ class TestMessage:
         )
         assert len(msg.tool_calls) == 1
         assert msg.tool_calls[0].name == "search"
-    
+
     def test_message_dict_conversion(self):
         """Test converting message to dict."""
         msg = Message(role="user", content="Hello")
@@ -52,25 +49,25 @@ class TestMessage:
 
 class TestSession:
     """Tests for Session type."""
-    
+
     def test_create_session(self):
         """Test creating a session."""
         session = Session()
         assert session.id is not None
         assert session.messages == []
-    
+
     def test_session_with_user(self):
         """Test session with user ID."""
         session = Session(user_id="user123")
         assert session.user_id == "user123"
-    
+
     def test_add_message_to_session(self):
         """Test adding messages to session."""
         session = Session()
         msg = Message(role="user", content="Hello")
         session.messages.append(msg)
         assert len(session.messages) == 1
-    
+
     def test_session_metadata(self):
         """Test session metadata."""
         session = Session(metadata={"key": "value"})
@@ -79,7 +76,7 @@ class TestSession:
 
 class TestToolCall:
     """Tests for ToolCall type."""
-    
+
     def test_create_tool_call(self):
         """Test creating a tool call."""
         tc = ToolCall(
@@ -89,7 +86,7 @@ class TestToolCall:
         )
         assert tc.name == "calculator"
         assert tc.arguments["expression"] == "2+2"
-    
+
     def test_tool_call_auto_id(self):
         """Test auto-generated ID."""
         tc = ToolCall(name="test", arguments={})
@@ -98,7 +95,7 @@ class TestToolCall:
 
 class TestToolResult:
     """Tests for ToolResult type."""
-    
+
     def test_success_result(self):
         """Test successful tool result."""
         result = ToolResult(
@@ -108,7 +105,7 @@ class TestToolResult:
         )
         assert result.success is True
         assert result.output == "4"
-    
+
     def test_error_result(self):
         """Test error tool result."""
         result = ToolResult(
@@ -123,7 +120,7 @@ class TestToolResult:
 
 class TestLLMResponse:
     """Tests for LLMResponse type."""
-    
+
     def test_create_response(self):
         """Test creating LLM response."""
         response = LLMResponse(
@@ -132,7 +129,7 @@ class TestLLMResponse:
         )
         assert response.content == "Hello!"
         assert response.model == "gpt-4"
-    
+
     def test_response_with_usage(self):
         """Test response with usage stats."""
         response = LLMResponse(
@@ -145,7 +142,7 @@ class TestLLMResponse:
 
 class TestExecutionContext:
     """Tests for ExecutionContext type."""
-    
+
     def test_create_context(self):
         """Test creating execution context."""
         ctx = ExecutionContext(
@@ -153,7 +150,7 @@ class TestExecutionContext:
             request_id="req_123",
         )
         assert ctx.request_id == "req_123"
-    
+
     def test_context_with_user(self):
         """Test context with user info."""
         ctx = ExecutionContext(
@@ -161,7 +158,7 @@ class TestExecutionContext:
             user_id="user123",
         )
         assert ctx.user_id == "user123"
-    
+
     def test_context_metadata(self):
         """Test context metadata."""
         ctx = ExecutionContext(
