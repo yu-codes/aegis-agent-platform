@@ -114,6 +114,44 @@ services:
       - .:/app:cached
       - /app/.venv
 
+  # ---------------------------------------------------------------------------
+  # Offline Mode - Zero API keys (use: docker-compose --profile offline up)
+  # ---------------------------------------------------------------------------
+  aegis-offline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        INSTALL_OPENAI: "false"
+        INSTALL_ANTHROPIC: "false"
+        INSTALL_FAISS: "false"
+    image: aegis:offline
+    container_name: aegis-offline
+    profiles:
+      - offline
+    restart: unless-stopped
+    ports:
+      - "${AEGIS_OFFLINE_PORT:-8002}:8000"
+    environment:
+      - AEGIS_ENV=development
+      - AEGIS_DEBUG=true
+      - AEGIS_LOG_LEVEL=DEBUG
+      # Offline mode - uses StubLLMAdapter
+      - LLM_OFFLINE_MODE=true
+      - LLM_DEFAULT_PROVIDER=stub
+      # Disable Redis - uses InMemorySessionBackend
+      - REDIS_ENABLED=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - aegis-network
+    # No external volumes needed for offline mode
+
 # =============================================================================
 # Networks
 # =============================================================================

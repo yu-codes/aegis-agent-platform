@@ -45,7 +45,7 @@ async def create_session(
     user: dict | None = Depends(get_current_user),
 ):
     """Create a new chat session."""
-    session = await session_manager.create(
+    session = await session_manager.create_session(
         user_id=user.get("id") if user else None,
         metadata=request.metadata if request else None,
     )
@@ -69,11 +69,21 @@ async def list_sessions(
     """List user's sessions."""
     user_id = user.get("id") if user else None
     
-    sessions = await session_manager.list_sessions(
+    # Get session IDs (offset is handled manually since backend doesn't support it)
+    session_ids = await session_manager.list_sessions(
         user_id=user_id,
-        limit=limit,
-        offset=offset,
+        limit=limit + offset,  # Get enough to handle offset
     )
+    
+    # Apply offset manually
+    session_ids = session_ids[offset:offset + limit]
+    
+    # Fetch full session objects
+    sessions = []
+    for sid in session_ids:
+        session = await session_manager.get_session(sid)
+        if session:
+            sessions.append(session)
     
     return SessionListResponse(
         sessions=[
@@ -97,7 +107,7 @@ async def get_session(
     user: dict | None = Depends(get_current_user),
 ):
     """Get session details."""
-    session = await session_manager.get(session_id)
+    session = await session_manager.get_session(session_id)
     
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -123,7 +133,7 @@ async def get_session_messages(
     user: dict | None = Depends(get_current_user),
 ):
     """Get messages from a session."""
-    session = await session_manager.get(session_id)
+    session = await session_manager.get_session(session_id)
     
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -151,7 +161,7 @@ async def delete_session(
     user: dict | None = Depends(get_current_user),
 ):
     """Delete a session."""
-    session = await session_manager.get(session_id)
+    session = await session_manager.get_session(session_id)
     
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -160,6 +170,6 @@ async def delete_session(
     if user and session.user_id and session.user_id != user.get("id"):
         raise HTTPException(status_code=403, detail="Access denied")
     
-    await session_manager.delete(session_id)
+    await session_manager.delete_session(session_id)
     
     return {"status": "deleted", "session_id": str(session_id)}

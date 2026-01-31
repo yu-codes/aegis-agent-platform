@@ -220,6 +220,33 @@ docker-compose --profile dev up
 docker-compose logs -f aegis
 ```
 
+### 🔌 Offline Mode (No External LLM Required)
+
+Run Aegis without any external LLM API dependencies using the StubLLMAdapter:
+
+```bash
+# Build and start offline container
+docker compose --profile offline up -d aegis-offline
+
+# Verify health
+curl http://localhost:8002/health
+# {"status":"healthy"}
+
+# Test chat (uses deterministic stub responses)
+curl -X POST http://localhost:8002/api/v1/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello!"}'
+
+# Access Swagger UI
+open http://localhost:8002/docs
+```
+
+Offline mode is useful for:
+- Local development without API keys
+- CI/CD pipeline testing
+- Demo environments
+- Architecture validation
+
 ## 📊 API Endpoints
 
 | Method | Endpoint | Description |

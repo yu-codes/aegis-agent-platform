@@ -166,15 +166,34 @@ async def _create_llm_adapter(settings):
     """
     Create the appropriate LLM adapter based on settings.
     
-    Returns None if no valid configuration is found.
+    Priority order:
+    1. If offline_mode=True or provider="stub": Use StubLLMAdapter
+    2. If OpenAI API key provided and provider="openai": Use OpenAI
+    3. If Anthropic API key provided and provider="anthropic": Use Anthropic
+    4. Fallback: Use StubLLMAdapter (ensures system always works)
+    
+    Returns:
+        An LLM adapter (never None - stub is always available)
     """
     try:
-        provider = getattr(settings.llm, 'default_provider', 'openai')
+        # Get effective provider (respects offline_mode flag)
+        provider = getattr(settings.llm, 'effective_provider', 
+                          getattr(settings.llm, 'default_provider', 'openai'))
+        
+        # Check for offline/stub mode first
+        if provider == "stub" or getattr(settings.llm, 'offline_mode', False):
+            from src.reasoning.llm.stub_adapter import StubLLMAdapter
+            print("🔌 Using STUB LLM adapter (offline mode)")
+            return StubLLMAdapter(
+                model=getattr(settings.llm, 'stub_model_name', 'stub-model-v1'),
+                stream_delay_ms=getattr(settings.llm, 'stub_stream_delay_ms', 20),
+            )
         
         if provider == "openai":
             api_key = getattr(settings.llm, 'openai_api_key', None)
             if api_key:
                 from src.reasoning.llm.openai_adapter import OpenAIAdapter
+                print("🔌 Using OpenAI LLM adapter")
                 return OpenAIAdapter(
                     model=settings.llm.default_model,
                     api_key=api_key,
@@ -184,14 +203,21 @@ async def _create_llm_adapter(settings):
             api_key = getattr(settings.llm, 'anthropic_api_key', None)
             if api_key:
                 from src.reasoning.llm.anthropic_adapter import AnthropicAdapter
+                print("🔌 Using Anthropic LLM adapter")
                 return AnthropicAdapter(
                     model=settings.llm.default_model,
                     api_key=api_key,
                 )
+        
+        # Fallback to stub if no valid provider configured
+        print("⚠️  No LLM API key configured - falling back to STUB adapter")
+        from src.reasoning.llm.stub_adapter import StubLLMAdapter
+        return StubLLMAdapter()
+        
     except Exception as e:
-        print(f"Failed to create LLM adapter: {e}")
-    
-    return None
+        print(f"⚠️  Failed to create LLM adapter ({e}) - using STUB adapter")
+        from src.reasoning.llm.stub_adapter import StubLLMAdapter
+        return StubLLMAdapter()
 
 
 def create_app(

@@ -91,11 +91,11 @@ async def chat(
     
     # Get or create session
     if request.session_id:
-        session = await session_manager.get(request.session_id)
+        session = await session_manager.get_session(request.session_id)
         if session is None:
             raise HTTPException(status_code=404, detail="Session not found")
     else:
-        session = await session_manager.create(
+        session = await session_manager.create_session(
             user_id=user.get("id") if user else None,
         )
     
@@ -129,7 +129,7 @@ async def chat(
         # Persist messages to session
         session.add_message(Message(role=MessageRole.USER, content=request.message))
         session.add_message(Message(role=MessageRole.ASSISTANT, content=result.content))
-        await session_manager.save(session)
+        await session_manager.update_session(session)
         
         # Get domain resolution info
         domain_info = await runtime.resolve_domain(
@@ -196,7 +196,7 @@ async def _stream_response(
             # Persist messages
             session.add_message(Message(role=MessageRole.USER, content=message))
             session.add_message(Message(role=MessageRole.ASSISTANT, content=final_content))
-            await session_manager.save(session)
+            await session_manager.update_session(session)
             
             yield f"event: done\ndata: {json.dumps({'content': final_content, **event.data})}\n\n"
         
@@ -216,7 +216,7 @@ async def regenerate_response(
     """
     Regenerate the last response.
     """
-    session = await session_manager.get(session_id)
+    session = await session_manager.get_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
     

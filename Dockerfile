@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Base image with Python and dependencies
 # -----------------------------------------------------------------------------
-FROM python:3.11-slim as base
+FROM python:3.11-slim AS base
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # -----------------------------------------------------------------------------
 # Stage 2: Builder stage for installing dependencies
 # -----------------------------------------------------------------------------
-FROM base as builder
+FROM base AS builder
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -58,7 +58,7 @@ RUN if [ "$INSTALL_OPENAI" = "true" ]; then pip install openai>=1.10.0; fi && \
 # -----------------------------------------------------------------------------
 # Stage 3: Development image
 # -----------------------------------------------------------------------------
-FROM base as dev
+FROM base AS dev
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
@@ -87,7 +87,7 @@ CMD ["uvicorn", "src.api.app:create_app", "--factory", "--host", "0.0.0.0", "--p
 # -----------------------------------------------------------------------------
 # Stage 4: Production image
 # -----------------------------------------------------------------------------
-FROM base as production
+FROM base AS production
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
@@ -95,6 +95,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy source code only (no dev files)
 COPY --chown=aegis:aegis src/ ./src/
+COPY --chown=aegis:aegis config/ ./config/
 COPY --chown=aegis:aegis pyproject.toml .
 
 # Switch to non-root user
@@ -107,8 +108,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run production server
-CMD ["uvicorn", "src.api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Run production server with single worker for offline mode
+CMD ["uvicorn", "src.api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
 
 # =============================================================================
 # Default target is production

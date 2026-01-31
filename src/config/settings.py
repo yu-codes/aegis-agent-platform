@@ -22,6 +22,7 @@ class RedisSettings(BaseSettings):
     
     model_config = SettingsConfigDict(env_prefix="REDIS_")
     
+    enabled: bool = Field(default=True, description="Enable Redis (false uses in-memory)")
     host: str = Field(default="localhost", description="Redis server hostname")
     port: int = Field(default=6379, ge=1, le=65535)
     db: int = Field(default=0, ge=0, le=15)
@@ -43,8 +44,14 @@ class LLMSettings(BaseSettings):
     
     model_config = SettingsConfigDict(env_prefix="LLM_")
     
-    # Provider selection
-    default_provider: Literal["openai", "anthropic", "local"] = "openai"
+    # Provider selection (stub = offline mode, no API key required)
+    default_provider: Literal["openai", "anthropic", "local", "stub"] = "openai"
+    
+    # Offline mode - forces stub adapter regardless of provider setting
+    offline_mode: bool = Field(
+        default=False,
+        description="Force offline mode using stub adapter (no API calls)",
+    )
     
     # OpenAI settings
     openai_api_key: SecretStr | None = Field(default=None)
@@ -60,12 +67,35 @@ class LLMSettings(BaseSettings):
     local_base_url: str = Field(default="http://localhost:8080/v1")
     local_default_model: str = Field(default="local-model")
     
+    # Stub adapter settings
+    stub_model_name: str = Field(default="stub-model-v1")
+    stub_stream_delay_ms: int = Field(default=20, ge=0)
+    
     # Shared settings
     default_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     default_max_tokens: int = Field(default=4096, ge=1)
     request_timeout: float = Field(default=60.0, gt=0)
     max_retries: int = Field(default=3, ge=0)
     retry_delay: float = Field(default=1.0, ge=0)
+    
+    @property
+    def default_model(self) -> str:
+        """Get default model based on provider."""
+        if self.offline_mode or self.default_provider == "stub":
+            return self.stub_model_name
+        elif self.default_provider == "openai":
+            return self.openai_default_model
+        elif self.default_provider == "anthropic":
+            return self.anthropic_default_model
+        else:
+            return self.local_default_model
+    
+    @property
+    def effective_provider(self) -> str:
+        """Get effective provider (stub if offline)."""
+        if self.offline_mode:
+            return "stub"
+        return self.default_provider
 
 
 class VectorStoreSettings(BaseSettings):
@@ -134,6 +164,10 @@ class ObservabilitySettings(BaseSettings):
     
     # Cost tracking
     enable_cost_tracking: bool = Field(default=True)
+    
+    # Rate limiting
+    rate_limit_enabled: bool = Field(default=False)
+    rate_limit_rpm: int = Field(default=60, ge=1)
 
 
 class Settings(BaseSettings):
