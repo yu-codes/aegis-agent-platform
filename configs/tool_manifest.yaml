@@ -1,0 +1,249 @@
+# Tool Manifest
+# Defines available tools and their configurations
+
+# Global tool settings
+settings:
+  default_timeout: 30000  # ms
+  max_retries: 2
+  rate_limit:
+    requests_per_minute: 100
+    burst: 10
+  sandbox_enabled: true
+  audit_calls: true
+
+# Built-in tools
+tools:
+  # Web Tools
+  web_search:
+    name: web_search
+    description: "Search the web for information"
+    category: web
+    permission_level: basic
+    enabled: true
+    
+    parameters:
+      query:
+        type: string
+        description: "Search query"
+        required: true
+      num_results:
+        type: integer
+        description: "Number of results"
+        default: 5
+        min: 1
+        max: 20
+        
+    config:
+      provider: serper  # serper, brave, google
+      timeout: 10000
+      
+  web_fetch:
+    name: web_fetch
+    description: "Fetch content from a URL"
+    category: web
+    permission_level: advanced
+    enabled: true
+    
+    parameters:
+      url:
+        type: string
+        description: "URL to fetch"
+        required: true
+      extract_text:
+        type: boolean
+        description: "Extract text only"
+        default: true
+        
+    config:
+      timeout: 30000
+      max_size: 1048576  # 1MB
+      allowed_schemes:
+        - http
+        - https
+
+  # Code Tools
+  code_executor:
+    name: code_executor
+    description: "Execute code in a sandboxed environment"
+    category: code
+    permission_level: dangerous
+    enabled: false  # Disabled by default
+    
+    parameters:
+      code:
+        type: string
+        description: "Code to execute"
+        required: true
+      language:
+        type: string
+        description: "Programming language"
+        required: true
+        enum:
+          - python
+          - javascript
+      timeout:
+        type: integer
+        description: "Execution timeout in ms"
+        default: 5000
+        max: 30000
+        
+    config:
+      sandbox: docker
+      memory_limit: 256M
+      cpu_limit: 0.5
+      network_disabled: true
+      allowed_imports:
+        python:
+          - math
+          - json
+          - datetime
+          - re
+          - collections
+          
+  code_analyzer:
+    name: code_analyzer
+    description: "Analyze code for issues and patterns"
+    category: code
+    permission_level: basic
+    enabled: true
+    
+    parameters:
+      code:
+        type: string
+        description: "Code to analyze"
+        required: true
+      language:
+        type: string
+        description: "Programming language"
+        required: true
+        enum:
+          - python
+          - javascript
+          - typescript
+          - java
+      checks:
+        type: array
+        description: "Types of checks to perform"
+        default:
+          - syntax
+          - complexity
+          - style
+
+  # File Tools
+  file_reader:
+    name: file_reader
+    description: "Read file contents"
+    category: file
+    permission_level: advanced
+    enabled: false  # Disabled by default
+    
+    parameters:
+      path:
+        type: string
+        description: "File path to read"
+        required: true
+      encoding:
+        type: string
+        description: "File encoding"
+        default: utf-8
+        
+    config:
+      allowed_extensions:
+        - .txt
+        - .md
+        - .json
+        - .yaml
+        - .csv
+      max_size: 1048576  # 1MB
+      base_path: ./data/files
+      
+  file_writer:
+    name: file_writer
+    description: "Write content to file"
+    category: file
+    permission_level: dangerous
+    enabled: false  # Disabled by default
+    
+    parameters:
+      path:
+        type: string
+        description: "File path to write"
+        required: true
+      content:
+        type: string
+        description: "Content to write"
+        required: true
+      mode:
+        type: string
+        description: "Write mode"
+        default: write
+        enum:
+          - write
+          - append
+          
+    config:
+      allowed_extensions:
+        - .txt
+        - .md
+        - .json
+      max_size: 1048576
+      base_path: ./data/output
+
+  # Math Tools
+  calculator:
+    name: calculator
+    description: "Perform mathematical calculations"
+    category: math
+    permission_level: basic
+    enabled: true
+    
+    parameters:
+      expression:
+        type: string
+        description: "Mathematical expression"
+        required: true
+        
+    config:
+      allowed_functions:
+        - sin
+        - cos
+        - tan
+        - sqrt
+        - log
+        - exp
+        - pow
+        - abs
+        - round
+        - floor
+        - ceil
+
+# Tool categories
+categories:
+  web:
+    description: "Web interaction tools"
+    icon: "🌐"
+  code:
+    description: "Code execution and analysis"
+    icon: "💻"
+  file:
+    description: "File system operations"
+    icon: "📁"
+  math:
+    description: "Mathematical operations"
+    icon: "🔢"
+
+# Custom tool templates
+templates:
+  http_tool:
+    type: http
+    config:
+      method: POST
+      headers:
+        Content-Type: application/json
+      timeout: 30000
+      
+  mcp_tool:
+    type: mcp
+    config:
+      transport: stdio
+      restart_on_failure: true

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-bottom: 20px; }
+        .status { margin: 15px 0; padding: 10px; border-radius: 4px; font-family: monospace; }
+        .status.ok { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.pending { background: #fff3cd; color: #856404; }
+        .debug-info { background: #f8f9fa; padding: 15px; margin-top: 20px; border-radius: 4px; border: 1px solid #dee2e6; }
+        .debug-info pre { margin: 0; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 4px; background: #007bff; color: white; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Aegis Agent Platform - Test Page</h1>
+        
+        <div id="status-container"></div>
+        
+        <div class="debug-info">
+            <h3>Debug Information</h3>
+            <pre id="debug-output"></pre>
+        </div>
+        
+        <div>
+            <button onclick="testHealth()">Test /health</button>
+            <button onclick="testReady()">Test /health/ready</button>
+            <button onclick="testUI()">Test /ui</button>
+            <button onclick="testTools()">Test /api/v1/tools</button>
+        </div>
+    </div>
+
+    <script>
+        const debug = (msg, data = null) => {
+            const timestamp = new Date().toLocaleTimeString('zh-TW');
+            const line = `[${timestamp}] ${msg}${data ? ': ' + JSON.stringify(data, null, 2) : ''}`;
+            console.log(line);
+            const output = document.getElementById('debug-output');
+            output.textContent += line + '\n';
+            output.parentElement.scrollTop = output.scrollHeight;
+        };
+
+        const addStatus = (label, status, message) => {
+            const statusClass = status === 'ok' ? 'ok' : status === 'error' ? 'error' : 'pending';
+            const container = document.getElementById('status-container');
+            const element = document.createElement('div');
+            element.className = `status ${statusClass}`;
+            element.innerHTML = `<strong>${label}:</strong> ${message}`;
+            container.appendChild(element);
+        };
+
+        window.addEventListener('load', () => {
+            debug('Page fully loaded');
+            debug('Location Info', {
+                origin: window.location.origin,
+                href: window.location.href,
+                pathname: window.location.pathname,
+            });
+        });
+
+        window.addEventListener('error', (event) => {
+            debug('🔴 Global Error', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                error: event.error?.toString(),
+            });
+        });
+
+        async function testEndpoint(endpoint, label) {
+            try {
+                debug(`Testing ${label}...`);
+                const response = await fetch(endpoint, { method: 'GET' });
+                const contentType = response.headers.get('content-type');
+                const data = contentType?.includes('application/json') ? await response.json() : await response.text();
+                
+                addStatus(label, response.ok ? 'ok' : 'error', 
+                    `Status ${response.status} - ${response.statusText}`);
+                debug(`✅ ${label} Success`, {
+                    status: response.status,
+                    contentType: contentType,
+                    dataLength: data.toString().length,
+                });
+                return true;
+            } catch (error) {
+                addStatus(label, 'error', error.message);
+                debug(`❌ ${label} Error`, {
+                    message: error.message,
+                    name: error.name,
+                });
+                return false;
+            }
+        }
+
+        const testHealth = () => testEndpoint('/health', 'Health Check');
+        const testReady = () => testEndpoint('/health/ready', 'Readiness Check');
+        const testUI = () => testEndpoint('/ui', 'Web UI HTML');
+        const testTools = () => testEndpoint('/api/v1/tools', 'Tools API');
+
+        // Auto test on load
+        window.addEventListener('load', async () => {
+            await testHealth();
+            await testReady();
+        });
+
+        debug('Test page script loaded');
+    </script>
+</body>
+</html>

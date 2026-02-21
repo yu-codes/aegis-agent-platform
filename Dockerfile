@@ -71,18 +71,21 @@ RUN pip install -r requirements-dev.txt
 # Copy source code
 COPY --chown=aegis:aegis . .
 
+# Set PYTHONPATH
+ENV PYTHONPATH=/app
+
 # Switch to non-root user
 USER aegis
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # Run development server with auto-reload
-CMD ["uvicorn", "src.api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "apps.api_server.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080", "--reload"]
 
 # -----------------------------------------------------------------------------
 # Stage 4: Production image
@@ -94,22 +97,37 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy source code only (no dev files)
-COPY --chown=aegis:aegis src/ ./src/
-COPY --chown=aegis:aegis config/ ./config/
+COPY --chown=aegis:aegis services/ ./services/
+COPY --chown=aegis:aegis apps/ ./apps/
+COPY --chown=aegis:aegis configs/ ./configs/
 COPY --chown=aegis:aegis pyproject.toml .
+
+# Set PYTHONPATH
+ENV PYTHONPATH=/app
 
 # Switch to non-root user
 USER aegis
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # Run production server with single worker for offline mode
-CMD ["uvicorn", "src.api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "apps.api_server.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080"]
+
+# -----------------------------------------------------------------------------
+# Stage 5: Offline image (no external API dependencies)
+# -----------------------------------------------------------------------------
+FROM production AS offline
+
+# Override environment for offline mode
+ENV LLM_OFFLINE_MODE=true \
+    LLM_DEFAULT_PROVIDER=stub \
+    OFFLINE_MODE=true \
+    REDIS_ENABLED=false
 
 # =============================================================================
 # Default target is production

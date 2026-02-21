@@ -1,0 +1,222 @@
+# Policy Rules Configuration
+# Defines safety and governance policies
+
+# Global settings
+settings:
+  enabled: true
+  default_action: allow
+  log_violations: true
+  audit_all: false
+
+# Content policies
+policies:
+  # PII Detection
+  pii_detection:
+    id: pii_detection
+    name: "PII Detection"
+    description: "Detect and protect personally identifiable information"
+    enabled: true
+    action: redact
+    severity: high
+    
+    patterns:
+      # Email
+      - pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        type: email
+        action: redact
+        replacement: "[EMAIL]"
+      
+      # Phone numbers
+      - pattern: '(?:\+?1[-.]?)?\(?[0-9]{3}\)?[-.]?[0-9]{3}[-.]?[0-9]{4}'
+        type: phone
+        action: redact
+        replacement: "[PHONE]"
+      
+      # SSN
+      - pattern: '\b\d{3}[-]?\d{2}[-]?\d{4}\b'
+        type: ssn
+        action: block
+        message: "Social Security Numbers are not allowed"
+      
+      # Credit card
+      - pattern: '\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13})\b'
+        type: credit_card
+        action: block
+        message: "Credit card numbers are not allowed"
+      
+      # IP Address
+      - pattern: '\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
+        type: ip_address
+        action: warn
+        
+  # Harmful Content
+  harmful_content:
+    id: harmful_content
+    name: "Harmful Content Filter"
+    description: "Block harmful, violent, or inappropriate content"
+    enabled: true
+    action: block
+    severity: critical
+    
+    categories:
+      - violence
+      - hate_speech
+      - harassment
+      - self_harm
+      - illegal_activity
+      
+    keywords:
+      violence:
+        - "how to hurt"
+        - "ways to harm"
+        - "instructions to kill"
+      illegal:
+        - "how to hack"
+        - "bypass security"
+        - "steal money"
+        
+  # Prompt Injection
+  prompt_injection:
+    id: prompt_injection
+    name: "Prompt Injection Guard"
+    description: "Detect and block prompt injection attempts"
+    enabled: true
+    action: block
+    severity: critical
+    
+    patterns:
+      - "ignore previous instructions"
+      - "disregard above"
+      - "forget your instructions"
+      - "you are now"
+      - "new persona"
+      - "act as if"
+      - "pretend you"
+      - "system: override"
+      - "admin mode"
+      - "developer mode"
+      - "jailbreak"
+
+  # Data Exfiltration
+  data_exfiltration:
+    id: data_exfiltration
+    name: "Data Exfiltration Prevention"
+    description: "Prevent extraction of sensitive system data"
+    enabled: true
+    action: block
+    severity: high
+    
+    blocked_requests:
+      - "show system prompt"
+      - "reveal instructions"
+      - "display configuration"
+      - "list all tools"
+      - "show internal state"
+      - "dump memory"
+
+# Content filtering levels
+content_filter_levels:
+  strict:
+    pii_detection: true
+    harmful_content: true
+    prompt_injection: true
+    data_exfiltration: true
+    allow_code: false
+    allow_urls: false
+    
+  moderate:
+    pii_detection: true
+    harmful_content: true
+    prompt_injection: true
+    data_exfiltration: true
+    allow_code: true
+    allow_urls: true
+    
+  low:
+    pii_detection: true
+    harmful_content: true
+    prompt_injection: false
+    data_exfiltration: false
+    allow_code: true
+    allow_urls: true
+    
+  off:
+    pii_detection: false
+    harmful_content: false
+    prompt_injection: false
+    data_exfiltration: false
+    allow_code: true
+    allow_urls: true
+
+# Role-based permissions
+roles:
+  guest:
+    level: 10
+    permissions:
+      - read:public
+    rate_limit: 10
+    daily_quota: 50
+    
+  user:
+    level: 20
+    permissions:
+      - read:public
+      - read:private
+      - write:own
+      - tools:basic
+    rate_limit: 60
+    daily_quota: 500
+    
+  power_user:
+    level: 30
+    permissions:
+      - read:public
+      - read:private
+      - write:own
+      - tools:basic
+      - tools:advanced
+    rate_limit: 120
+    daily_quota: 2000
+    
+  admin:
+    level: 100
+    permissions:
+      - read:*
+      - write:*
+      - tools:*
+      - admin:*
+    rate_limit: 1000
+    daily_quota: -1  # unlimited
+
+# Tool permissions
+tool_permissions:
+  basic:
+    - web_search
+    - calculator
+    - code_analyzer
+    
+  advanced:
+    - web_fetch
+    - file_reader
+    
+  dangerous:
+    - code_executor
+    - file_writer
+
+# Audit settings
+audit:
+  enabled: true
+  retention_days: 90
+  
+  events_to_log:
+    - policy_violation
+    - permission_denied
+    - tool_execution
+    - admin_action
+    - login_attempt
+    
+  sensitive_fields:
+    - password
+    - token
+    - api_key
+    - credit_card

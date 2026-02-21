@@ -25,7 +25,7 @@ services:
     container_name: aegis-api
     restart: unless-stopped
     ports:
-      - "${AEGIS_PORT:-8000}:8000"
+      - "${AEGIS_PORT:-8080}:8080"
     environment:
       # Server settings
       - AEGIS_ENV=${AEGIS_ENV:-production}
@@ -46,7 +46,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -98,7 +98,7 @@ services:
       - dev
     restart: unless-stopped
     ports:
-      - "${AEGIS_DEV_PORT:-8001}:8000"
+      - "${AEGIS_DEV_PORT:-8001}:8080"
     environment:
       - AEGIS_ENV=development
       - AEGIS_DEBUG=true
@@ -121,36 +121,26 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: production
-      args:
-        INSTALL_OPENAI: "false"
-        INSTALL_ANTHROPIC: "false"
-        INSTALL_FAISS: "false"
+      target: offline
     image: aegis:offline
     container_name: aegis-offline
     profiles:
       - offline
     restart: unless-stopped
     ports:
-      - "${AEGIS_OFFLINE_PORT:-8002}:8000"
+      - "${AEGIS_OFFLINE_PORT:-8002}:8080"
     environment:
       - AEGIS_ENV=development
       - AEGIS_DEBUG=true
       - AEGIS_LOG_LEVEL=DEBUG
-      # Offline mode - uses StubLLMAdapter
-      - LLM_OFFLINE_MODE=true
-      - LLM_DEFAULT_PROVIDER=stub
-      # Disable Redis - uses InMemorySessionBackend
-      - REDIS_ENABLED=false
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
     networks:
       - aegis-network
-    # No external volumes needed for offline mode
 
 # =============================================================================
 # Networks

@@ -3,56 +3,134 @@
 [![CI](https://github.com/aegis-ai/aegis-agent-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/aegis-ai/aegis-agent-platform/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![codecov](https://codecov.io/gh/aegis-ai/aegis-agent-platform/branch/main/graph/badge.svg)](https://codecov.io/gh/aegis-ai/aegis-agent-platform)
 
-A production-ready, modular AI agent platform designed for enterprise deployments. Built with Python, FastAPI, and modern async patterns.
+A production-ready, modular AI agent platform designed for enterprise deployments. Built with Python, FastAPI, and modern async patterns. Supports **development**, **production**, and **offline** modes.
 
 ## ✨ Features
 
-- **🧠 Reasoning Core** — Provider-agnostic LLM integration (OpenAI, Anthropic) with ReAct and tool-calling strategies
-- **💾 State & Memory** — Session management, short-term context, long-term retrieval with Redis backend
-- **📚 Knowledge/RAG** — Document ingestion, chunking, embeddings, and vector store integration
-- **🔧 Tool System** — Extensible tool registry with permissions, rate limiting, and execution tracing
-- **📋 Planning & Orchestration** — Task decomposition, step control, and checkpoint management
-- **🛡️ Safety & Governance** — Input validation, guardrails, RBAC, and comprehensive audit logging
-- **📊 Observability** — OpenTelemetry-compatible tracing, Prometheus metrics, structured logging
-- **🚀 API Layer** — FastAPI with streaming (SSE), middleware composition, and dependency injection
-- **🤖 Multi-Agent** — Agent orchestration, critic/reflection patterns, plugin architecture
+- **🧠 Agent Core** — Task orchestration, planning, state management, execution graphs, and self-reflection
+- **💡 Reasoning** — Provider-agnostic LLM integration (OpenAI, Anthropic, Stub) with model routing
+- **📚 RAG Pipeline** — Document indexing, hybrid search (vector + keyword), reranking, and domain-specific retrieval
+- **💾 Memory System** — Session management, long-term memory with decay, vector memory, and summarization
+- **🔧 Tool System** — Extensible tool registry with validation, execution, rate limiting, and built-in tools
+- **🛡️ Governance** — Policy engine, content filtering, prompt injection detection, and RBAC
+- **📊 Evaluation** — RAG metrics, hallucination detection, regression testing, and benchmarking
+- **👀 Observability** — Distributed tracing, Prometheus metrics, structured logging, and audit logging
+- **🚀 API Server** — FastAPI with streaming (SSE), middleware composition, and dependency injection
+- **⚙️ Worker** — Background task processing for document ingestion, indexing, and evaluation
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              API LAYER (FastAPI)                            │
-│   ┌─────────┐  ┌─────────────┐  ┌───────────┐  ┌─────────┐  ┌─────────────┐│
-│   │  Chat   │  │  Sessions   │  │   Tools   │  │  Admin  │  │   Health    ││
-│   └────┬────┘  └──────┬──────┘  └─────┬─────┘  └────┬────┘  └──────┬──────┘│
+│   ┌─────────┐  ┌─────────────┐  ┌───────────┐  ┌─────────┐   ┌─────────────┐│
+│   │  Chat   │  │  Sessions   │  │   Tools   │  │  Admin  │   │   Health    ││
+│   └────┬────┘  └──────┬──────┘  └─────┬─────┘  └────┬────┘   └──────┬──────┘│
 └────────┼──────────────┼───────────────┼─────────────┼───────────────┼───────┘
          │              │               │             │               │
 ┌────────┴──────────────┴───────────────┴─────────────┴───────────────┴───────┐
-│                           MIDDLEWARE STACK                                   │
+│                           MIDDLEWARE STACK                                  │
 │     [Tracing] → [RateLimit] → [Auth] → [ErrorHandling] → [Streaming]        │
 └─────────────────────────────────────────────────────────────────────────────┘
          │              │               │             │               │
 ┌────────┴──────────────┴───────────────┴─────────────┴───────────────┴───────┐
-│                              CORE MODULES                                    │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                 │
-│  │  Reasoning     │  │  Planning &    │  │  Multi-Agent   │                 │
-│  │  (LLM + Tools) │  │  Orchestration │  │  Coordination  │                 │
-│  └───────┬────────┘  └───────┬────────┘  └───────┬────────┘                 │
-│          │                   │                   │                          │
-│  ┌───────┴───────────────────┴───────────────────┴────────┐                 │
-│  │                    SAFETY & GOVERNANCE                  │                 │
-│  │  [Validation] [Guardrails] [RBAC] [Audit] [Plugins]    │                 │
-│  └─────────────────────────────────────────────────────────┘                 │
+│                              CORE SERVICES                                  │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ │
+│  │ Agent Core │ │ Reasoning  │ │    RAG     │ │   Memory   │ │   Tools    │ │
+│  └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ │
+│        │              │              │              │              │        │
+│  ┌─────┴──────────────┴──────────────┴──────────────┴──────────────┴───────┐│
+│  │                    GOVERNANCE & OBSERVABILITY                           ││
+│  │  [PolicyEngine] [ContentFilter] [Tracing] [Metrics] [AuditLog]          ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────────────┘
          │              │               │             │               │
 ┌────────┴──────────────┴───────────────┴─────────────┴───────────────┴───────┐
-│                           DATA LAYER                                         │
+│                           DATA LAYER                                        │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────────────────┐ │
 │  │   Memory   │  │  Knowledge │  │  Sessions  │  │   Vector Store         │ │
-│  │   (Redis)  │  │  (RAG)     │  │  (Redis)   │  │   (FAISS/Milvus)       │ │
+│  │   (Redis)  │  │  (RAG)     │  │  (Redis)   │  │   (FAISS/In-Memory)    │ │
 │  └────────────┘  └────────────┘  └────────────┘  └────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## 📁 Project Structure (Monorepo)
+
+```
+aegis-agent-platform/
+├── services/                    # Core service modules
+│   ├── agent_core/              # Agent orchestration (6 files)
+│   │   ├── orchestrator.py      # Main agent execution loop
+│   │   ├── planner.py           # Task decomposition
+│   │   ├── state_manager.py     # Execution state management
+│   │   ├── execution_graph.py   # DAG-based task execution
+│   │   └── reflection.py        # Self-improvement engine
+│   ├── reasoning/               # LLM integration (8 files)
+│   │   ├── llm_router.py        # Model routing & fallback
+│   │   ├── prompt_builder.py    # Prompt construction
+│   │   ├── response_parser.py   # Response parsing
+│   │   └── model_adapters/      # OpenAI, Anthropic, Stub adapters
+│   ├── rag/                     # RAG pipeline (10 files)
+│   │   ├── index_manager.py     # Document indexing
+│   │   ├── retriever.py         # Semantic retrieval
+│   │   ├── hybrid_search.py     # Vector + keyword search with RRF
+│   │   ├── reranker.py          # Cross-encoder reranking
+│   │   ├── domain_registry.py   # Domain-specific configs
+│   │   └── chunking/            # Recursive & semantic chunking
+│   ├── memory/                  # Memory system (4 files)
+│   │   ├── session_memory.py    # Conversation memory
+│   │   ├── long_term_memory.py  # Persistent memory with decay
+│   │   ├── summarizer.py        # LLM/extractive summarization
+│   │   └── vector_memory.py     # Semantic memory retrieval
+│   ├── tools/                   # Tool system (8 files)
+│   │   ├── tool_registry.py     # Registration & schema generation
+│   │   ├── tool_executor.py     # Execution with timeout/retry
+│   │   ├── tool_validator.py    # Input validation & injection detection
+│   │   └── builtins/            # Web, code, file, math tools
+│   ├── governance/              # Safety & policy (4 files)
+│   │   ├── policy_engine.py     # YAML-based policy rules
+│   │   ├── content_filter.py    # Content filtering levels
+│   │   ├── injection_guard.py   # Prompt injection detection
+│   │   └── permission_checker.py # RBAC with role hierarchy
+│   ├── evaluation/              # Testing & metrics (4 files)
+│   │   ├── rag_metrics.py       # Context/answer relevance
+│   │   ├── hallucination_check.py # Claim verification
+│   │   ├── regression_tests.py  # JSON-based test suites
+│   │   └── benchmark_runner.py  # Performance benchmarking
+│   └── observability/           # Monitoring (4 files)
+│       ├── tracing.py           # Distributed tracing
+│       ├── metrics.py           # Prometheus metrics
+│       ├── logging.py           # Structured logging
+│       └── audit_log.py         # Audit trail
+├── apps/                        # Applications
+│   ├── api_server/              # FastAPI server
+│   │   ├── app.py               # Application factory
+│   │   ├── dependencies.py      # Dependency injection
+│   │   ├── middleware.py        # Custom middleware
+│   │   └── routes/              # API endpoints
+│   └── worker/                  # Background worker
+│       ├── worker.py            # Task processor
+│       └── tasks.py             # Task definitions
+├── configs/                     # Configuration files
+│   ├── model_config.yaml        # LLM model settings
+│   ├── rag_config.yaml          # RAG parameters
+│   ├── policy_rules.yaml        # Safety policies
+│   └── tool_manifest.yaml       # Tool definitions
+├── infra/                       # Infrastructure
+│   ├── docker/                  # Additional Docker configs
+│   │   └── nginx/               # Nginx configuration
+│   ├── kubernetes/              # K8s manifests
+│   └── terraform/               # IaC templates
+├── tests/                       # Test suites
+│   ├── unit/                    # Unit tests
+│   ├── integration/             # Integration tests
+│   └── e2e/                     # End-to-end tests
+├── Dockerfile                   # Multi-stage Docker build (dev/prod/offline)
+├── docker-compose.yml           # Docker Compose with profiles
+└── data/                        # Runtime data
+    └── vector_store/            # FAISS indices
 ```
 
 ## 🚀 Quick Start
@@ -60,7 +138,7 @@ A production-ready, modular AI agent platform designed for enterprise deployment
 ### Prerequisites
 
 - Python 3.11+
-- Redis (for session storage)
+- Redis (optional, for production)
 - Docker (optional)
 
 ### Installation
@@ -89,150 +167,62 @@ cp .env.example .env
 ### Running
 
 ```bash
-# Start Redis (if not using Docker)
-redis-server
+# Development mode (with hot reload)
+uvicorn apps.api_server.app:create_app --factory --reload --port 8000
 
-# Start the API server
-uvicorn src.api.app:create_app --factory --reload
+# Production mode
+uvicorn apps.api_server.app:create_app --factory --host 0.0.0.0 --port 8000 --workers 4
 
-# Or use Docker Compose
+# Using Docker Compose
 docker-compose up -d
+
+# Offline mode (no API keys required)
+docker-compose --profile offline up -d aegis-offline
 ```
 
 ### First API Call
 
 ```bash
+# Health check
+curl http://localhost:8080/health
+
 # Create a session
-curl -X POST http://localhost:8000/sessions
+curl -X POST http://localhost:8080/api/v1/sessions
 
 # Send a message
-curl -X POST http://localhost:8000/chat \
+curl -X POST http://localhost:8080/api/v1/chat \
   -H "Content-Type: application/json" \
-  -d '{"session_id": "<session-id>", "message": "Hello!"}'
+  -d '{"message": "Hello!", "session_id": "<session-id>"}'
 ```
 
-## 📁 Project Structure
+## 🐳 Docker Modes
 
-```
-src/
-├── api/                    # FastAPI application
-│   ├── app.py             # App factory & lifespan
-│   ├── middleware.py      # Request/response middleware
-│   ├── streaming.py       # SSE streaming utilities
-│   ├── dependencies.py    # Dependency injection
-│   └── routes/            # API endpoints
-├── config/                 # Configuration management
-│   ├── settings.py        # Application settings
-│   ├── secrets.py         # Secrets handling
-│   └── model_routing.py   # LLM model routing
-├── core/                   # Core types & exceptions
-│   ├── types.py           # Domain models
-│   └── exceptions.py      # Custom exceptions
-├── reasoning/              # LLM & reasoning
-│   ├── llm/               # LLM adapters
-│   ├── prompts/           # Prompt templates
-│   └── strategies/        # Reasoning strategies
-├── memory/                 # Memory management
-│   ├── session.py         # Session state
-│   ├── short_term.py      # Working memory
-│   └── long_term.py       # Persistent memory
-├── knowledge/              # RAG pipeline
-│   ├── ingestion.py       # Document ingestion
-│   ├── chunking.py        # Text chunking
-│   ├── embeddings.py      # Embedding generation
-│   └── retriever.py       # Knowledge retrieval
-├── tools/                  # Tool system
-│   ├── registry.py        # Tool registration
-│   ├── executor.py        # Tool execution
-│   ├── permissions.py     # Access control
-│   └── builtin.py         # Built-in tools
-├── planning/               # Task planning
-│   ├── decomposer.py      # Task decomposition
-│   ├── controller.py      # Execution control
-│   └── checkpoints.py     # Checkpoint management
-├── safety/                 # Safety & governance
-│   ├── input_validation.py
-│   ├── guardrails.py
-│   ├── rbac.py
-│   └── audit.py
-├── observability/          # Monitoring
-│   ├── tracing.py         # Distributed tracing
-│   ├── metrics.py         # Prometheus metrics
-│   ├── logging.py         # Structured logging
-│   └── evaluation.py      # Evaluation harness
-└── advanced/               # Advanced features
-    ├── multi_agent.py     # Multi-agent orchestration
-    ├── critic.py          # Self-critique
-    └── plugins.py         # Plugin system
-```
+All modes use the same `docker-compose.yml` with different profiles:
 
-## 🔧 Configuration
-
-Configuration is managed through environment variables and Pydantic settings:
-
+### Development Mode
 ```bash
-# Core settings
-AEGIS_ENV=production
-AEGIS_DEBUG=false
-AEGIS_LOG_LEVEL=INFO
+# Hot reload enabled, debug logging (port 8001)
+docker-compose --profile dev up -d aegis-dev redis
 
-# LLM providers
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Redis
-AEGIS_REDIS_URL=redis://localhost:6379/0
-
-# Security
-AEGIS_API_KEY=your-api-key
-AEGIS_JWT_SECRET=your-jwt-secret
+# Or without Redis
+docker-compose --profile dev up -d aegis-dev
 ```
 
-## 🧪 Testing
-
+### Production Mode
 ```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-pytest
-
-# Run with coverage
-pytest --cov=src --cov-report=html
-
-# Run specific test file
-pytest tests/test_tools.py -v
-```
-
-## 🐳 Docker
-
-```bash
-# Build image
-docker build -t aegis:latest .
-
-# Run with Docker Compose
+# Standard production deployment (port 8000)
 docker-compose up -d
-
-# Development mode (with hot reload)
-docker-compose --profile dev up
-
-# View logs
-docker-compose logs -f aegis
 ```
 
-### 🔌 Offline Mode (No External LLM Required)
-
-Run Aegis without any external LLM API dependencies using the StubLLMAdapter:
-
+### Offline Mode (No External APIs)
 ```bash
-# Build and start offline container
-docker compose --profile offline up -d aegis-offline
+# Air-gapped deployment with stub LLM (port 8002) 
+docker-compose --profile offline up -d aegis-offline
 
 # Verify health
 curl http://localhost:8002/health
-# {"status":"healthy"}
 
-# Test chat (uses deterministic stub responses)
+# Test chat (uses stub responses)
 curl -X POST http://localhost:8002/api/v1/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Hello!"}'
@@ -245,79 +235,164 @@ Offline mode is useful for:
 - Local development without API keys
 - CI/CD pipeline testing
 - Demo environments
+- Air-gapped deployments
 - Architecture validation
 
 ## 📊 API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/health` | Health check |
-| POST | `/chat` | Send message (supports streaming) |
-| POST | `/sessions` | Create session |
-| GET | `/sessions/{id}` | Get session |
-| DELETE | `/sessions/{id}` | Delete session |
-| GET | `/tools` | List available tools |
-| POST | `/tools/{name}/execute` | Execute a tool |
-| GET | `/admin/stats` | Platform statistics |
-| GET | `/admin/metrics` | Prometheus metrics |
+| GET | `/health` | Basic health check |
+| GET | `/health/ready` | Readiness probe |
+| GET | `/health/live` | Liveness probe |
+| GET | `/health/metrics` | Prometheus metrics |
+| POST | `/api/v1/chat` | Send message (supports streaming) |
+| POST | `/api/v1/sessions` | Create session |
+| GET | `/api/v1/sessions` | List sessions |
+| GET | `/api/v1/sessions/{id}` | Get session history |
+| DELETE | `/api/v1/sessions/{id}` | Delete session |
+| GET | `/api/v1/tools` | List available tools |
+| GET | `/api/v1/tools/{name}` | Get tool details |
+| POST | `/api/v1/tools/call` | Execute a tool |
+| GET | `/api/v1/admin/stats` | Platform statistics |
+| GET | `/api/v1/admin/audit` | Audit logs |
+| GET | `/api/v1/admin/config` | Current configuration |
+
+## 🔧 Configuration
+
+Configuration is managed through environment variables and YAML files:
+
+```bash
+# Core settings
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=INFO
+
+# LLM providers
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Offline mode
+OFFLINE_MODE=true
+DEFAULT_MODEL=stub
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+
+# Security
+ENABLE_RATE_LIMIT=true
+RATE_LIMIT_RPM=60
+```
+
+### YAML Configuration Files
+
+- `configs/model_config.yaml` - Model definitions, routing rules, rate limits
+- `configs/rag_config.yaml` - Embedding, chunking, retrieval settings
+- `configs/policy_rules.yaml` - Safety policies, content filters, RBAC roles
+- `configs/tool_manifest.yaml` - Tool definitions and permissions
+
+## 🧪 Testing
+
+```bash
+# Install dev dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=services --cov=apps --cov-report=html
+
+# Run specific test types
+pytest tests/unit/ -v           # Unit tests
+pytest tests/integration/ -v    # Integration tests
+pytest tests/e2e/ -v -m e2e     # E2E tests
+
+# Run offline tests (no external APIs)
+pytest tests/ -m "not requires_llm"
+```
+
+### Test Structure
+
+```
+tests/
+├── unit/                    # Fast, isolated tests
+│   ├── test_agent_core.py   # Orchestrator, planner, state
+│   ├── test_rag.py          # Indexing, retrieval, chunking
+│   ├── test_memory.py       # Session, long-term memory
+│   ├── test_tools.py        # Registry, executor, validators
+│   └── test_governance.py   # Policies, filters, permissions
+├── integration/             # Service integration tests
+│   ├── test_api.py          # API endpoint tests
+│   └── test_rag_pipeline.py # Full RAG pipeline
+├── e2e/                     # End-to-end scenarios
+│   └── test_chat_flow.py    # Complete chat workflows
+└── fixtures.py              # Shared test fixtures
+```
 
 ## 🔌 Extending
 
 ### Adding a Custom Tool
 
 ```python
-from src.tools import tool_registry
+from services.tools import ToolRegistry
 
-@tool_registry.register
-def my_custom_tool(query: str) -> str:
-    """
-    Description of what the tool does.
-    
-    Args:
-        query: The search query
-        
-    Returns:
-        The result
-    """
-    return f"Result for: {query}"
+registry = ToolRegistry()
+
+@registry.tool(
+    name="my_custom_tool",
+    description="Description of what the tool does",
+)
+def my_custom_tool(query: str, limit: int = 10) -> dict:
+    """Execute custom logic."""
+    return {"result": f"Processed: {query}", "limit": limit}
 ```
 
 ### Adding an LLM Provider
 
 ```python
-from src.reasoning.llm.base import LLMAdapter, LLMResponse
+from services.reasoning.model_adapters.base import BaseModelAdapter, LLMResponse
 
-class CustomAdapter(LLMAdapter):
-    async def complete(self, messages, **kwargs) -> LLMResponse:
+class CustomAdapter(BaseModelAdapter):
+    async def complete(self, messages: list, **kwargs) -> LLMResponse:
         # Implementation
         pass
     
-    async def stream(self, messages, **kwargs):
-        # Implementation
-        pass
+    async def stream(self, messages: list, **kwargs):
+        # Streaming implementation
+        async for chunk in self._call_api(messages):
+            yield chunk
 ```
 
-### Creating a Plugin
+### Creating a Background Task
 
 ```python
-from src.advanced.plugins import Plugin, PluginMetadata, HookType
+from apps.worker.tasks import TASKS
 
-class MyPlugin(Plugin):
-    @property
-    def metadata(self) -> PluginMetadata:
-        return PluginMetadata(
-            name="my_plugin",
-            version="1.0.0",
-            description="My custom plugin",
-        )
-    
-    def get_hooks(self):
-        return {
-            HookType.PRE_REQUEST: self.on_request,
-        }
-    
-    async def on_request(self, context):
-        print(f"Request: {context.request_id}")
+async def my_task(payload: dict) -> dict:
+    """Process background task."""
+    # Implementation
+    return {"status": "completed"}
+
+TASKS["my_task"] = my_task
+```
+
+## 📈 CI/CD
+
+The project uses GitHub Actions for continuous integration:
+
+- **Lint**: Ruff, Black, MyPy checks
+- **Test**: Unit, integration, and E2E tests with coverage
+- **Build**: Docker image building
+- **Security**: Dependency scanning
+- **Deploy**: Automated deployments (on release)
+
+```yaml
+# Trigger CI
+git push origin main
+
+# View workflows
+https://github.com/aegis-ai/aegis-agent-platform/actions
 ```
 
 ## 📝 License
@@ -328,6 +403,15 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 Contributions welcome! Please read our contributing guidelines and submit PRs.
 
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing`)
+5. Open a Pull Request
+
 ## 📚 Documentation
 
-Full documentation available at [https://aegis-ai.github.io/aegis-agent-platform](https://aegis-ai.github.io/aegis-agent-platform)
+- [Architecture Overview](docs/ARCHITECTURE.md)
+- [Domain System](docs/DOMAIN_SYSTEM.md)
+- [System Integration](docs/SYSTEM_INTEGRATION.md)
+- [API Documentation](http://localhost:8080/docs) (when running)

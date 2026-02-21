@@ -72,7 +72,8 @@ Repository = "https://github.com/aegis-ai/aegis-agent-platform"
 Issues = "https://github.com/aegis-ai/aegis-agent-platform/issues"
 
 [project.scripts]
-aegis = "src.cli:main"
+aegis = "apps.api_server.app:main"
+aegis-worker = "apps.worker:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -80,17 +81,28 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/src",
+    "/services",
+    "/apps",
+    "/configs",
     "/tests",
+    "/src",  # Legacy support
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["services", "apps"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-v --cov=src --cov-report=term-missing --cov-report=xml"
+addopts = "-v"
+markers = [
+    "unit: unit tests",
+    "integration: integration tests",
+    "e2e: end-to-end tests",
+    "slow: slow running tests",
+    "requires_llm: tests requiring LLM API",
+    "offline: tests that work in offline mode",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
@@ -115,7 +127,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["src"]
+src = ["services", "apps", "tests"]
 
 [tool.ruff.lint]
 select = [

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis - 簡單測試</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #999; margin-bottom: 30px; font-size: 14px; }
+        .status-box {
+            background: #f0f0f0;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .status-box.success { border-left-color: #10b981; }
+        .status-box.error { border-left-color: #ef4444; }
+        .status-box.info { border-left-color: #3b82f6; }
+        button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+            font-size: 14px;
+        }
+        button:hover { background: #764ba2; }
+        .chat-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .chat-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        textarea {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 60px;
+        }
+        textarea:focus { outline: none; border-color: #667eea; }
+        .send-btn {
+            background: #10b981;
+            padding: 10px 15px;
+        }
+        .send-btn:hover { background: #059669; }
+        .message {
+            background: #f9f9f9;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+        }
+        .message.user { border-left-color: #3b82f6; background: #eff6ff; }
+        .message.assistant { border-left-color: #10b981; background: #f0fdf4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Aegis Agent Platform</h1>
+        <p class="subtitle">AI 對話助手 - 簡單版本</p>
+
+        <div id="status-section"></div>
+
+        <div class="chat-section">
+            <h2 style="font-size: 16px; margin-bottom: 15px;">對話區域</h2>
+            <div id="messages" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;"></div>
+
+            <div class="chat-input-group">
+                <textarea id="input" placeholder="輸入您的訊息..."></textarea>
+                <button class="send-btn" onclick="sendMessage()">Send</button>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <button onclick="testAPI()">🔌 測試 API</button>
+                <button onclick="clearMessages()">🗑️ 清除</button>
+                <button onclick="testTools()">🔨 測試工具</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_URL = window.location.origin;
+        let sessionId = null;
+
+        // Initialize
+        async function init() {
+            console.log('Initializing app...', { API_URL });
+            addStatus('✅ 頁面已加載', 'success', { timestamp: new Date().toLocaleTimeString() });
+            
+            try {
+                const result = await fetch(API_URL + '/health');
+                if (result.ok) {
+                    addStatus('✅ API 連線正常', 'success');
+                } else {
+                    addStatus('❌ API 狀態異常', 'error', { status: result.status });
+                }
+            } catch (e) {
+                addStatus('❌ 無法連接到 API', 'error', { error: e.message });
+            }
+        }
+
+        function addStatus(title, type, details) {
+            const section = document.getElementById('status-section');
+            const box = document.createElement('div');
+            box.className = `status-box ${type}`;
+            box.textContent = title;
+            if (details) {
+                box.textContent += ' • ' + JSON.stringify(details);
+            }
+            section.appendChild(box);
+        }
+
+        async function testAPI() {
+            try {
+                const response = await fetch(API_URL + '/api/v1/sessions', { method: 'POST' });
+                const data = await response.json();
+                sessionId = data.session_id;
+                addMessage('系統', `✅ 已建立工作階段: ${sessionId.substring(0, 8)}...`, 'assistant');
+                addStatus('✅ 工作階段建立成功', 'success');
+            } catch (e) {
+                addStatus('❌ 建立工作階段失敗', 'error', { error: e.message });
+                addMessage('系統', '❌ 建立工作階段失敗: ' + e.message, 'assistant');
+            }
+        }
+
+        async function testTools() {
+            try {
+                const response = await fetch(API_URL + '/api/v1/tools');
+                const data = await response.json();
+                const toolCount = data.tools?.length || 0;
+                addMessage('系統', `✅ 找到 ${toolCount} 個工具`, 'assistant');
+                addStatus(`✅ 找到 ${toolCount} 個工具`, 'success');
+            } catch (e) {
+                addMessage('系統', '❌ 無法加載工具列表', 'assistant');
+                addStatus('❌ 加載工具列表失敗', 'error');
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            addMessage('您', message, 'user');
+            input.value = '';
+
+            if (!sessionId) {
+                await testAPI();
+                if (!sessionId) {
+                    addMessage('系統', '❌ 請先建立工作階段', 'assistant');
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch(API_URL + '/api/v1/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message,
+                        session_id: sessionId,
+                        stream: false
+                    })
+                });
+
+                const data = await response.json();
+                addMessage('AI', data.message || '無回應', 'assistant');
+            } catch (e) {
+                addMessage('系統', '❌ 發送失敗: ' + e.message, 'assistant');
+            }
+        }
+
+        function addMessage(role, text, type) {
+            const messagesDiv = document.getElementById('messages');
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.innerHTML = `<strong>${role}:</strong> ${text}`;
+            messagesDiv.appendChild(msg);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+            addStatus('🗑️ 已清除對話', 'info');
+        }
+
+        // Start!
+        window.addEventListener('load', init);
+        window.addEventListener('error', (e) => {
+            console.error('Global error:', e);
+            addStatus('🔴 JavaScript 錯誤', 'error', { message: e.message });
+        });
+    </script>
+</body>
+</html>

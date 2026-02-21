@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Agent Platform</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        // Debug logging
+        console.log('Page loading...', {
+            origin: window.location.origin,
+            href: window.location.href,
+            pathname: window.location.pathname,
+        });
+        window.addEventListener('error', (e) => {
+            console.error('Global error:', e.error);
+        });
+    </script>
+</head>
+<body>
+    <div id="app" class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>Aegis</span>
+                </div>
+                <button class="btn-icon" id="new-chat-btn" title="新對話">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>對話歷史</h3>
+                <div class="session-list" id="session-list">
+                    <!-- Sessions will be rendered here -->
+                </div>
+            </div>
+            
+            <div class="sidebar-section tools-section">
+                <h3>可用工具</h3>
+                <div class="tools-list" id="tools-list">
+                    <!-- Tools will be rendered here -->
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button class="btn-settings" id="settings-btn">
+                    <i class="fas fa-cog"></i>
+                    <span>設定</span>
+                </button>
+                <div class="status-indicator" id="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">連線中...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Chat Header -->
+            <header class="chat-header">
+                <button class="btn-icon mobile-menu-btn" id="mobile-menu-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="chat-title">
+                    <h1 id="chat-title">新對話</h1>
+                    <span class="model-badge" id="model-badge">stub</span>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-icon" id="clear-chat-btn" title="清除對話">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="btn-icon" id="export-btn" title="匯出對話">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Chat Messages -->
+            <div class="chat-messages" id="chat-messages">
+                <div class="welcome-message" id="welcome-message">
+                    <div class="welcome-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h2>歡迎使用 Aegis Agent Platform</h2>
+                    <p>我是您的 AI 助手，可以幫助您處理各種任務。</p>
+                    <div class="quick-actions">
+                        <button class="quick-action-btn" data-prompt="請幫我分析一段程式碼">
+                            <i class="fas fa-code"></i>
+                            <span>程式碼分析</span>
+                        </button>
+                        <button class="quick-action-btn" data-prompt="請幫我搜尋相關資訊">
+                            <i class="fas fa-search"></i>
+                            <span>資訊搜尋</span>
+                        </button>
+                        <button class="quick-action-btn" data-prompt="請幫我計算">
+                            <i class="fas fa-calculator"></i>
+                            <span>數學計算</span>
+                        </button>
+                        <button class="quick-action-btn" data-prompt="請幫我撰寫文件">
+                            <i class="fas fa-file-alt"></i>
+                            <span>文件撰寫</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <div class="input-options">
+                        <button class="btn-icon option-btn" id="attach-btn" title="附加檔案">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <label class="toggle-option">
+                            <input type="checkbox" id="stream-toggle" checked>
+                            <span>串流</span>
+                        </label>
+                        <label class="toggle-option">
+                            <input type="checkbox" id="tools-toggle" checked>
+                            <span>工具</span>
+                        </label>
+                    </div>
+                    <div class="input-row">
+                        <textarea 
+                            id="chat-input" 
+                            placeholder="輸入訊息... (Shift+Enter 換行, Enter 送出)"
+                            rows="1"
+                        ></textarea>
+                        <button class="btn-send" id="send-btn" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>設定</h2>
+                <button class="btn-icon modal-close" id="settings-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-group">
+                    <h3>模型設定</h3>
+                    <div class="setting-item">
+                        <label for="model-select">預設模型</label>
+                        <select id="model-select">
+                            <option value="stub">Stub (離線)</option>
+                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                            <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                            <option value="claude-3-haiku">Claude 3 Haiku</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="temperature-slider">Temperature: <span id="temp-value">0.7</span></label>
+                        <input type="range" id="temperature-slider" min="0" max="2" step="0.1" value="0.7">
+                    </div>
+                    <div class="setting-item">
+                        <label for="max-tokens-input">最大 Tokens</label>
+                        <input type="number" id="max-tokens-input" value="4096" min="100" max="32768">
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>介面設定</h3>
+                    <div class="setting-item">
+                        <label for="theme-select">主題</label>
+                        <select id="theme-select">
+                            <option value="dark">深色模式</option>
+                            <option value="light">淺色模式</option>
+                            <option value="auto">跟隨系統</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="font-size-select">字體大小</label>
+                        <select id="font-size-select">
+                            <option value="small">小</option>
+                            <option value="medium" selected>中</option>
+                            <option value="large">大</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>API 設定</h3>
+                    <div class="setting-item">
+                        <label for="api-url-input">API 端點</label>
+                        <input type="text" id="api-url-input" value="" placeholder="http://localhost:8080">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="settings-reset">重置</button>
+                <button class="btn btn-primary" id="settings-save">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/chat.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
